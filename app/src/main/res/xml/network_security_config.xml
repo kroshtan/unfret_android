@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  HTTPS only, for the app's own requests (unfret.net) and for the page being checked (a shared http:// link is
+  opened as https://). Only the system's certificate authorities are trusted, never ones the user added.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

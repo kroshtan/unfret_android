@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand">#34B08F</color>
+    <color name="brand_strong">#49C4A2</color>
+    <color name="brand_ink">#7FDCBF</color>
+    <color name="brand_soft">#173A30</color>
+    <color name="on_brand">#06231B</color>
+    <color name="bg">#0C1613</color>
+    <color name="surface">#13201C</color>
+    <color name="surface_2">#172823</color>
+    <color name="ink">#E5F1EC</color>
+    <color name="ink_2">#B9CEC6</color>
+    <color name="muted">#8EA89F</color>
+    <color name="line">#22372F</color>
+    <color name="line_strong">#2E473E</color>
+    <color name="good">#6FD3A0</color>
+    <color name="good_soft">#163327</color>
+    <color name="note">#E8B45E</color>
+    <color name="note_soft">#33291A</color>
+    <color name="care">#EC9A6E</color>
+    <color name="care_soft">#35231A</color>
+    <color name="stop">#EE8F7D</color>
+    <color name="stop_soft">#37201C</color>
+    <color name="on_band">#06231B</color>
+</resources>

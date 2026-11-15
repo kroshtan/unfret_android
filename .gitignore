@@ -1,0 +1,28 @@
+# Gradle and Android build output
+build/
+dist/
+.gradle/
+.gradle-home/
+.home/
+.kotlin/
+local.properties
+*.apk
+*.aab
+captures/
+# Never commit signing material (see docs/RELEASING.md)
+*.jks
+*.keystore
+keystore.properties
+# IDEs
+.idea/
+*.iml
+.vscode/
+# The extractor's tooling
+extractor/node_modules/
+extractor/.extension/
+node_modules/
+# Taiga upload rules (the metarepo's scripts/taiga-zip.sh)
+.venv/
+venv/
+__pycache__/
+coverage/

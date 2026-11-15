@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The smiley check without its tile, centred in the adaptive icon's safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="192"
+    android:viewportHeight="192">
+    <group
+        android:translateX="31"
+        android:translateY="30">
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M37.5,44a7.5,7.5 0 1,0 15,0a7.5,7.5 0 1,0 -15,0M71.5,44a7.5,7.5 0 1,0 15,0a7.5,7.5 0 1,0 -15,0" />
+        <path
+            android:pathData="M31,70 L50,89 Q58,96 66,89 L99,57"
+            android:strokeWidth="11.5"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
+</vector>
