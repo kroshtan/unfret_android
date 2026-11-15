@@ -1,0 +1,113 @@
+package net.unfret.android
+
+import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.Closeable
+
+/** An error answer from the API, in its `{detail, error_code}` shape. */
+class ApiError(val status: Int, val code: String, detail: String) : Exception(detail) {
+    val badKey: Boolean get() = status == 401
+    val needsChecks: Boolean get() = status == 402 || code == "INSUFFICIENT_CREDITS"
+    val serviceOff: Boolean get() = status == 503
+}
+
+data class HttpRequest(val method: String, val url: String, val headers: Map<String, String>, val body: String?)
+
+class HttpResponse(val status: Int, val reader: BufferedReader, private val onClose: () -> Unit = {}) : Closeable {
+    override fun close() {
+        try {
+            reader.close()
+        } finally {
+            onClose()
+        }
+    }
+}
+
+/** Sends one request; throws IOException when the server can't be reached. */
+fun interface Transport {
+    fun send(request: HttpRequest): HttpResponse
+}
+
+/**
+ * The Unfret API as the app uses it: remaining checks and the streamed analysis, with the user's API key as
+ * `Authorization: Bearer ufk_…`. Requests carry nothing else about the user or the phone.
+ */
+class UnfretApi(private val base: String, private val key: String, private val transport: Transport) {
+    init {
+        require(base in BASES) { "not an Unfret server: $base" }
+    }
+
+    private fun headers(json: Boolean): Map<String, String> = buildMap {
+        put("Authorization", "Bearer $key")
+        // The app is in English, like the extension; the API answers in English anyway.
+        put("Accept-Language", "en")
+        put("User-Agent", USER_AGENT)
+        if (json) put("Content-Type", "application/json")
+    }
+
+    /** `GET /v1/credits`. */
+    fun credits(): Credits =
+        transport.send(HttpRequest("GET", "$base/v1/credits", headers(false), null)).use { response ->
+            if (response.status !in 200..299) throw errorFrom(response)
+            Credits.parse(JSONObject(response.reader.readText()))
+        }
+
+    /**
+     * `POST /v1/analyze/stream`: calls [onStep] with each analysis step's name as it finishes, and returns the
+     * result. Throws [ApiError] for an error answer or event, IOException when the connection fails.
+     */
+    fun analyze(body: JSONObject, onStep: (String) -> Unit = {}): AnalysisResult {
+        val request = HttpRequest(
+            "POST",
+            "$base/v1/analyze/stream",
+            headers(true) + ("Accept" to "text/event-stream"),
+            body.toString(),
+        )
+        transport.send(request).use { response ->
+            if (response.status !in 200..299) throw errorFrom(response)
+            val events = SseReader(response.reader)
+            while (true) {
+                val event = events.next() ?: break
+                val data = try {
+                    JSONObject(event.data)
+                } catch (_: Exception) {
+                    continue
+                }
+                when (event.event) {
+                    "step" -> data.optString("skill").takeIf { it.isNotEmpty() }?.let(onStep)
+                    "result" -> return AnalysisResult.parse(data)
+                    "error" -> throw ApiError(
+                        data.optInt("status", 500),
+                        data.optString("error_code", "INTERNAL_ERROR"),
+                        data.optString("detail", "Analysis failed."),
+                    )
+                }
+            }
+            throw ApiError(502, "STREAM_ENDED", "The analysis ended without a result.")
+        }
+    }
+
+    private fun errorFrom(response: HttpResponse): ApiError {
+        val body = try {
+            JSONObject(response.reader.readText())
+        } catch (_: Exception) {
+            JSONObject()
+        }
+        return ApiError(
+            response.status,
+            body.optString("error_code").ifEmpty { "HTTP_${response.status}" },
+            body.optString("detail").ifEmpty { "HTTP ${response.status}" },
+        )
+    }
+
+    companion object {
+        const val PRODUCTION = "https://unfret.net"
+        const val DEV = "https://dev.unfret.net"
+
+        /** The only servers the app talks to. */
+        val BASES = setOf(PRODUCTION, DEV)
+
+        /** The app and its version only: the platform's default would name the phone's model. */
+        val USER_AGENT = "Unfret-Android/${BuildConfig.VERSION_NAME}"
+    }
+}

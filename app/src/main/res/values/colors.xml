@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Unfret's palette, from the website (unfret_backend static/site.css): mint and teal, calm. -->
+<resources>
+    <color name="brand">#1F8A70</color>
+    <color name="brand_strong">#17705B</color>
+    <color name="brand_ink">#0F5C4A</color>
+    <color name="brand_soft">#E1F1EA</color>
+    <color name="on_brand">#FFFFFF</color>
+    <color name="bg">#F3F8F5</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_2">#F6FAF8</color>
+    <color name="ink">#12302A</color>
+    <color name="ink_2">#3C5A52</color>
+    <color name="muted">#5E776F</color>
+    <color name="line">#D9E6DF</color>
+    <color name="line_strong">#C3D6CC</color>
+    <color name="good">#1F7A55</color>
+    <color name="good_soft">#E3F3EA</color>
+    <color name="note">#9A6510</color>
+    <color name="note_soft">#FBF1DF</color>
+    <color name="care">#B0562A</color>
+    <color name="care_soft">#FBEAE1</color>
+    <color name="stop">#A8402F</color>
+    <color name="stop_soft">#F8E5E0</color>
+    <color name="on_band">#FFFFFF</color>
+    <!-- The launcher icon is the same in both themes. -->
+    <color name="icon_background">#1F8A70</color>
+</resources>

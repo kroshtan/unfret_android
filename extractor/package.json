@@ -1,0 +1,19 @@
+{
+  "name": "unfret-android-extractor",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Bundles the Unfret browser extension's page extractor for the Android app's WebView.",
+  "scripts": {
+    "build": "node build.mjs --extension .extension",
+    "check": "node build.mjs --extension .extension --check",
+    "test": "node --test test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "jsdom": "31.0.0"
+  },
+  "engines": {
+    "node": ">=22 <23"
+  }
+}

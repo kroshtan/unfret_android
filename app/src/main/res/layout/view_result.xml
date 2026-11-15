@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/band_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/band_symbol"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:background="@drawable/band_symbol"
+                    android:gravity="center"
+                    android:importantForAccessibility="no"
+                    android:textColor="@color/on_band"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/band_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:textAppearance="@style/TextAppearance.Material3.TitleLarge"
+                    android:textColor="@color/ink"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/headline"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                android:textColor="@color/ink" />
+
+            <TextView
+                android:id="@+id/no_check"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/no_check_used"
+                android:textAppearance="@style/TextAppearance.Unfret.Small"
+                android:visibility="gone" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <LinearLayout
+        android:id="@+id/sections"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/result_notice"
+        android:textAppearance="@style/TextAppearance.Unfret.Small" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/back_to_page"
+        style="@style/Widget.Material3.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/back_to_page" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/done"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/done" />
+</LinearLayout>

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ forgejo.workflow }}-${{ forgejo.ref }}
+  cancel-in-progress: ${{ forgejo.event_name == 'pull_request' }}
+
+# The public runner: an unprivileged throwaway container (2 GB, 2 CPUs) with no docker socket and no secrets. Each job
+# runs in the same pinned image the Makefile uses locally; keep the digests in step with it.
+jobs:
+  # The extension's extractor, bundled: the committed bundle must be exactly the pinned extension commit's, and it
+  # must read the extension's fixture pages as the extension does.
+  extractor:
+    runs-on: kroshtan-public
+    container:
+      image: node:22-bookworm@sha256:e13726ca604184d7a91fcacab1fc09eefd642dc28e79ac34e85540dd93b78cfb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Fetch the pinned extension source
+        run: ./extractor/fetch-extension.sh
+      - name: Install the bundler
+        working-directory: extractor
+        run: npm ci --no-audit --no-fund
+      - name: The bundle is the pinned commit's
+        working-directory: extractor
+        run: npm run check
+      - name: Test the bundle on the extension's fixtures
+        working-directory: extractor
+        run: npm test
+
+  # The app: Android lint (warnings are errors), JVM unit tests and the debug APK.
+  android:
+    runs-on: kroshtan-public
+    container:
+      image: ghcr.io/cirruslabs/android-sdk:36@sha256:f9b3ea9ed2b5fc9522adae82c7b4622ab7aa54207ef532c8e615a347dca08f31
+    steps:
+      # This image has no node, which actions/checkout needs: fetch the commit with git (the repository is public).
+      - name: Check out
+        env:
+          SERVER: ${{ forgejo.server_url }}
+          REPO: ${{ forgejo.repository }}
+          SHA: ${{ forgejo.sha }}
+          REF: ${{ forgejo.ref }}
+        run: |
+          set -euo pipefail
+          git init -q .
+          git remote add origin "$SERVER/$REPO.git"
+          git fetch -q --depth 1 origin "$REF"
+          git checkout -q FETCH_HEAD
+          echo "checked out $(git rev-parse HEAD) ($REF; event commit $SHA)"
+      - name: Lint
+        run: ./gradlew --console=plain lintDebug
+      - name: Unit tests
+        run: ./gradlew --console=plain testDebugUnitTest
+      - name: Debug APK
+        run: |
+          ./gradlew --console=plain assembleDebug
+          ls -l app/build/outputs/apk/debug/
