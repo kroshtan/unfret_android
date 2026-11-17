@@ -3,12 +3,18 @@ name: CI
 on:
   push:
     branches: [main]
+  # A pull request is checked once it is ready: not while its title starts with "WIP:" or "[WIP]" (a draft), and
+  # dropping that prefix (an `edited` event; Forgejo has no `ready_for_review`) starts the run (README, "Pull
+  # requests and CI").
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
 
+# A newer commit cancels the older one's run, on a pull request and on main alike (nothing here deploys). An edit
+# never cancels anything: it queues.
 concurrency:
   group: ${{ forgejo.workflow }}-${{ forgejo.ref }}
-  cancel-in-progress: ${{ forgejo.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ forgejo.event.action != 'edited' }}
 
 # The public runner: an unprivileged throwaway container (2 GB, 2 CPUs) with no docker socket and no secrets. Each job
 # runs in the same pinned image the Makefile uses locally; keep the digests in step with it.
@@ -16,31 +22,139 @@ jobs:
   # The extension's extractor, bundled: the committed bundle must be exactly the pinned extension commit's, and it
   # must read the extension's fixture pages as the extension does.
   extractor:
+    if: forgejo.event_name != 'pull_request' || !forgejo.event.pull_request.draft
     runs-on: kroshtan-public
     container:
       image: node:22-bookworm@sha256:e13726ca604184d7a91fcacab1fc09eefd642dc28e79ac34e85540dd93b78cfb
     steps:
+      # Is this check still needed? (README, "Pull requests and CI".) A run whose commit is no longer the branch's
+      # newest checks nothing: the newer commit's own run checks it. On a pull request, an edit that leaves it ready
+      # (a new description or title) reports the result its commit already has instead of checking it again;
+      # dropping "WIP:" (the commit has no result yet) runs the checks.
+      - name: Still needed?
+        id: gate
+        env:
+          API: ${{ forgejo.server_url }}/api/v1/repos/${{ forgejo.repository }}
+          EVENT: ${{ forgejo.event_name }}
+          ACTION: ${{ forgejo.event.action }}
+          SHA: ${{ forgejo.event.pull_request.head.sha || forgejo.sha }}
+          BRANCH: ${{ forgejo.ref_name }}
+          RUN: ${{ forgejo.run_number }}
+          CONTEXT: CI / ${{ forgejo.job }} (pull_request)
+        run: |
+          python3 -I - <<'PY'
+          import json, os, sys, urllib.parse, urllib.request
+
+          env = os.environ
+
+          def get(path):
+              # The repository is public: its branches and commit statuses need no token.
+              with urllib.request.urlopen(env["API"] + path, timeout=30) as response:
+                  return json.load(response)
+
+          def decide(run, why):
+              print(why)
+              with open(env.get("FORGEJO_OUTPUT") or env["GITHUB_OUTPUT"], "a") as output:
+                  output.write(f"run={run}\n")
+              sys.exit()
+
+          if env["EVENT"] in ("push", "workflow_dispatch"):
+              tip = get("/branches/" + urllib.parse.quote(env["BRANCH"], safe=""))["commit"]["id"]
+              if tip != env["SHA"]:
+                  decide("false", f"::notice::superseded: {env['BRANCH']} is at {tip} now; that commit's run checks it")
+          elif env["EVENT"] == "pull_request" and env["ACTION"] == "edited":
+              statuses = get(f"/commits/{env['SHA']}/statuses?sort=highestindex&limit=50")
+              earlier = [
+                  s for s in statuses
+                  if s["context"] == env["CONTEXT"] and f"/runs/{env['RUN']}/" not in (s["target_url"] or "")
+              ]
+              if earlier:
+                  last = max(earlier, key=lambda s: s["id"])
+                  if last["status"] == "success":
+                      decide("false", f"::notice::this commit already passed: {last['target_url']}")
+                  if last["status"] == "failure" and last["description"].startswith("Failing"):
+                      print(f"::error::this commit already failed: {last['target_url']} (push a fix or re-run it)")
+                      sys.exit(1)
+          decide("true", "checking this commit")
+          PY
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.gate.outputs.run == 'true'
       - name: Fetch the pinned extension source
+        if: steps.gate.outputs.run == 'true'
         run: ./extractor/fetch-extension.sh
       - name: Install the bundler
+        if: steps.gate.outputs.run == 'true'
         working-directory: extractor
         run: npm ci --no-audit --no-fund
       - name: The bundle is the pinned commit's
+        if: steps.gate.outputs.run == 'true'
         working-directory: extractor
         run: npm run check
       - name: Test the bundle on the extension's fixtures
+        if: steps.gate.outputs.run == 'true'
         working-directory: extractor
         run: npm test
 
   # The app: Android lint (warnings are errors), JVM unit tests and the debug APK.
   android:
+    if: forgejo.event_name != 'pull_request' || !forgejo.event.pull_request.draft
     runs-on: kroshtan-public
     container:
       image: ghcr.io/cirruslabs/android-sdk:36@sha256:f9b3ea9ed2b5fc9522adae82c7b4622ab7aa54207ef532c8e615a347dca08f31
     steps:
+      # Is this check still needed? (README, "Pull requests and CI".) A run whose commit is no longer the branch's
+      # newest checks nothing: the newer commit's own run checks it. On a pull request, an edit that leaves it ready
+      # (a new description or title) reports the result its commit already has instead of checking it again;
+      # dropping "WIP:" (the commit has no result yet) runs the checks.
+      - name: Still needed?
+        id: gate
+        env:
+          API: ${{ forgejo.server_url }}/api/v1/repos/${{ forgejo.repository }}
+          EVENT: ${{ forgejo.event_name }}
+          ACTION: ${{ forgejo.event.action }}
+          SHA: ${{ forgejo.event.pull_request.head.sha || forgejo.sha }}
+          BRANCH: ${{ forgejo.ref_name }}
+          RUN: ${{ forgejo.run_number }}
+          CONTEXT: CI / ${{ forgejo.job }} (pull_request)
+        run: |
+          python3 -I - <<'PY'
+          import json, os, sys, urllib.parse, urllib.request
+
+          env = os.environ
+
+          def get(path):
+              # The repository is public: its branches and commit statuses need no token.
+              with urllib.request.urlopen(env["API"] + path, timeout=30) as response:
+                  return json.load(response)
+
+          def decide(run, why):
+              print(why)
+              with open(env.get("FORGEJO_OUTPUT") or env["GITHUB_OUTPUT"], "a") as output:
+                  output.write(f"run={run}\n")
+              sys.exit()
+
+          if env["EVENT"] in ("push", "workflow_dispatch"):
+              tip = get("/branches/" + urllib.parse.quote(env["BRANCH"], safe=""))["commit"]["id"]
+              if tip != env["SHA"]:
+                  decide("false", f"::notice::superseded: {env['BRANCH']} is at {tip} now; that commit's run checks it")
+          elif env["EVENT"] == "pull_request" and env["ACTION"] == "edited":
+              statuses = get(f"/commits/{env['SHA']}/statuses?sort=highestindex&limit=50")
+              earlier = [
+                  s for s in statuses
+                  if s["context"] == env["CONTEXT"] and f"/runs/{env['RUN']}/" not in (s["target_url"] or "")
+              ]
+              if earlier:
+                  last = max(earlier, key=lambda s: s["id"])
+                  if last["status"] == "success":
+                      decide("false", f"::notice::this commit already passed: {last['target_url']}")
+                  if last["status"] == "failure" and last["description"].startswith("Failing"):
+                      print(f"::error::this commit already failed: {last['target_url']} (push a fix or re-run it)")
+                      sys.exit(1)
+          decide("true", "checking this commit")
+          PY
       # This image has no node, which actions/checkout needs: fetch the commit with git (the repository is public).
       - name: Check out
+        if: steps.gate.outputs.run == 'true'
         env:
           SERVER: ${{ forgejo.server_url }}
           REPO: ${{ forgejo.repository }}
@@ -54,10 +168,13 @@ jobs:
           git checkout -q FETCH_HEAD
           echo "checked out $(git rev-parse HEAD) ($REF; event commit $SHA)"
       - name: Lint
+        if: steps.gate.outputs.run == 'true'
         run: ./gradlew --console=plain lintDebug
       - name: Unit tests
+        if: steps.gate.outputs.run == 'true'
         run: ./gradlew --console=plain testDebugUnitTest
       - name: Debug APK
+        if: steps.gate.outputs.run == 'true'
         run: |
           ./gradlew --console=plain assembleDebug
           ls -l app/build/outputs/apk/debug/
