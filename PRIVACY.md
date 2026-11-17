@@ -30,10 +30,10 @@ The page itself is not changed. The code that does this is the browser extension
 Only to the Unfret API (`unfret.net`, hosted in the EU), when you tap "Check this page":
 
 - the page address, and the product facts and text described above;
-- your Unfret key (`ufk_…`), which identifies the account whose checks are used.
+- your Unfret pass (an API key, `ufk_…`), which identifies the account whose checks are used.
 
-When you save a key, and when the home screen shows your remaining checks, the app asks `unfret.net` for the
-key's balance (with the key). Requests name the app and its version (`Unfret-Android/0.1.0`), not your phone.
+When you save a pass, and when the home screen shows your remaining checks, the app asks `unfret.net` for the
+pass's balance (with the pass). Requests name the app and its version (`Unfret-Android/0.1.0`), not your phone.
 
 The app makes no other requests: no analytics, no trackers, no advertising or crash-reporting services, no Google
 Play Services. The page you open is loaded by Android's system WebView, which talks to that page's own servers
@@ -44,7 +44,7 @@ covered by the website's policy, not by the app.
 
 ## What is stored on your phone
 
-- your Unfret key, encrypted with a key kept in the Android Keystore (it can't be read back off the phone, and it
+- your Unfret pass, encrypted with a key kept in the Android Keystore (it can't be read back off the phone, and it
   isn't included in backups or device transfers);
 - that you accepted the intro screen (and, in test builds only, which server to use).
 

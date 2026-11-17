@@ -15,4 +15,10 @@ object ApiKeys {
 
     /** The public part of a key (it names the account), for showing which key is in use. */
     fun idOf(key: String): String? = KEY.matchEntire(key)?.groupValues?.get(1)
+
+    /**
+     * A key's public ID as the website shows an Unfret pass: in capitals, in two groups ("ABCDE-FGHIJ"), so it can be
+     * read out and compared. Only the words change: the key itself stays as it is.
+     */
+    fun shownId(key: String): String? = idOf(key)?.uppercase()?.let { "${it.take(5)}-${it.drop(5)}" }
 }

@@ -5,7 +5,7 @@
 
     <!-- Intro and consent -->
     <string name="intro_title">How Unfret works</string>
-    <string name="intro_body">Unfret looks at a shop page, an ad or a service provider\'s page and tells you in plain words whether it all adds up.\n\n• Share a link to Unfret from any app, or paste it here. The page opens inside Unfret, on your phone, over your own connection, so you can accept a cookie banner or solve a captcha.\n\n• Nothing is read until you tap Check this page. Then Unfret reads the page on your phone: the product facts and the visible text. Account menus, greetings, forms, checkout and delivery areas, and any address that isn\'t the business\'s own are removed first. On a private seller\'s ad, the seller\'s name is never read.\n\n• Only those facts, that text and the page address are sent, to unfret.net, with your Unfret key. Nothing about you or your phone.\n\n• Each check uses one check from your key. Checks are bought on unfret.net, not in this app.\n\n• The app keeps only your key on the phone, encrypted. Pages you open aren\'t kept: their cookies and cache are deleted when you close them.</string>
+    <string name="intro_body">Unfret looks at a shop page, an ad or a service provider\'s page and tells you in plain words whether it all adds up.\n\n• Share a link to Unfret from any app, or paste it here. The page opens inside Unfret, on your phone, over your own connection, so you can accept a cookie banner or solve a captcha.\n\n• Nothing is read until you tap Check this page. Then Unfret reads the page on your phone: the product facts and the visible text. Account menus, greetings, forms, checkout and delivery areas, and any address that isn\'t the business\'s own are removed first. On a private seller\'s ad, the seller\'s name is never read.\n\n• Only those facts, that text and the page address are sent, to unfret.net, with your Unfret pass. Nothing about you or your phone.\n\n• Each check uses one check from your pass. Checks are bought on unfret.net, not in this app.\n\n• The app keeps only your pass on the phone, encrypted. Pages you open aren\'t kept: their cookies and cache are deleted when you close them.</string>
     <string name="intro_agree">I agree</string>
     <string name="privacy_policy">Privacy policy</string>
     <string name="about">About &amp; privacy</string>
@@ -17,11 +17,11 @@
     <string name="link_invalid">That isn\'t a web link.</string>
     <string name="link_not_checkable">This page can\'t be checked.</string>
     <string name="check">Check</string>
-    <string name="pending_link">Set up your key below, then check this link.</string>
+    <string name="pending_link">Set up your pass below, then check this link.</string>
 
     <string name="account_title">Your checks</string>
-    <string name="no_key">Paste your Unfret key to start. You get one when you buy checks on unfret.net.</string>
-    <string name="key_in_use">Key %1$s… on this phone</string>
+    <string name="no_key">Paste your Unfret pass to start. You get one when you buy checks on unfret.net.</string>
+    <string name="key_in_use">Unfret pass %1$s on this phone</string>
     <string name="credits_loading">Looking up your checks…</string>
     <plurals name="checks_left">
         <item quantity="one">%d check left</item>
@@ -29,21 +29,21 @@
     </plurals>
     <string name="get_checks">Get checks</string>
     <string name="have_code">Have a code?</string>
-    <string name="paste_key">Paste your key</string>
-    <string name="change_key">Change key</string>
-    <string name="remove_key">Remove key</string>
-    <string name="checks_on_website">Checks are bought on unfret.net. Come back here when you have your key.</string>
+    <string name="paste_key">Paste your pass</string>
+    <string name="change_key">Change pass</string>
+    <string name="remove_key">Remove pass</string>
+    <string name="checks_on_website">Checks are bought on unfret.net. Come back here when you have your pass.</string>
 
-    <string name="key_dialog_title">Your Unfret key</string>
+    <string name="key_dialog_title">Your Unfret pass</string>
     <string name="key_dialog_body">It starts with ufk_. It is stored on this phone only, encrypted.</string>
     <string name="key_hint">ufk_…</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
-    <string name="key_invalid">That isn\'t an Unfret key (it starts with ufk_).</string>
-    <string name="key_rejected">The server doesn\'t know this key (or it was replaced with its recovery code).</string>
-    <string name="checking_key">Checking the key…</string>
-    <string name="remove_key_title">Remove the key from this phone?</string>
-    <string name="remove_key_body">Its checks stay on the key. Keep a copy of it (or its recovery code) to use it again.</string>
+    <string name="key_invalid">That isn\'t an Unfret pass (it starts with ufk_). Copy it again in full.</string>
+    <string name="key_rejected">Unfret doesn\'t know this pass (or it was replaced with its backup code).</string>
+    <string name="checking_key">Checking the pass…</string>
+    <string name="remove_key_title">Remove the pass from this phone?</string>
+    <string name="remove_key_body">Its checks stay on the pass. Keep a copy of it (or its backup code) to use it again.</string>
     <string name="remove">Remove</string>
 
     <string name="dev_server">Use the dev server (dev.unfret.net, test network)</string>
@@ -69,14 +69,22 @@
 
     <!-- Problems (the extension\'s wording) -->
     <string name="problem_service_off">Unfret checks aren\'t available right now. Please try again later.</string>
-    <string name="problem_bad_key">The server doesn\'t know your key. Check it on the home screen.</string>
+    <string name="problem_bad_key">Unfret doesn\'t know your pass. Check it on the home screen.</string>
     <string name="problem_no_checks">You have no checks left.</string>
     <string name="problem_failed">The check failed. No check was used.</string>
     <string name="problem_offline">Can\'t reach Unfret. Check your connection and try again.</string>
-    <string name="open_home">Check your key</string>
+    <string name="open_home">Check your pass</string>
 
     <!-- Result -->
     <string name="result_title">Result</string>
+    <!-- The four verdicts in the website's words, for a result without the server's label (an older server) -->
+    <string name="band_reliable">Looks fine</string>
+    <string name="band_concerns">Worth a look</string>
+    <string name="band_careful">Think twice</string>
+    <string name="band_junk_or_scam">Serious concerns</string>
+    <!-- A verdict below "Looks fine" always names a reason: the server's catalogue reason, when a result has none -->
+    <string name="reason_overall_title">Several small signals</string>
+    <string name="reason_overall_detail">No single big problem, but several smaller signals together lowered the score.</string>
     <string name="not_assessed">This page couldn\'t be checked</string>
     <string name="no_check_used">No check was used.</string>
     <string name="reasons_title">What stood out</string>
@@ -85,6 +93,6 @@
     <string name="done">Done</string>
     <string name="result_notice">Unfret reports risk signals from what the page shows; it never calls a shop a scam. The page may change after this check.</string>
     <string name="severity_high">Serious</string>
-    <string name="severity_medium">Worth a look</string>
+    <string name="severity_medium">Notable</string>
     <string name="severity_low">Minor</string>
 </resources>

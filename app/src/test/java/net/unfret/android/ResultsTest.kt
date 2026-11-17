@@ -47,6 +47,24 @@ class ResultsTest {
     }
 
     @Test
+    fun `a verdict below Looks fine always names a reason`() {
+        // The server always sends one; a result without (an older server's) shows the catalogue's overall reason.
+        for (score in listOf(60, 30, 10)) {
+            assertTrue(AnalysisResult.parse(JSONObject("""{"score": $score, "explanation": "x"}""")).needsOverallReason)
+        }
+        val middle = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 40, "explanation": "x", "verdict": {"band": "careful", "label": "Think twice",
+                "headline": "x", "reasons": [{"title": "Fake countdown", "detail": "", "severity": "high"}]}}""",
+            ),
+        )
+        assertFalse(middle.needsOverallReason)
+        assertEquals(listOf("Fake countdown"), middle.reasonsToShow.map { it.title })
+        assertFalse(AnalysisResult.parse(JSONObject("""{"score": 90, "explanation": "x"}""")).needsOverallReason)
+        assertFalse(AnalysisResult.parse(JSONObject("""{"score": -1, "explanation": "x"}""")).needsOverallReason)
+    }
+
+    @Test
     fun `an unknown band is no verdict`() {
         val result = AnalysisResult.parse(JSONObject("""{"score": 10, "explanation": "x", "verdict": {"band": "new"}}"""))
         assertNull(result.verdict)
