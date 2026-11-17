@@ -13,8 +13,10 @@ Android only. English. No ads, no trackers, no Google Play Services, no analytic
 - The service behind it (API, website, scoring):
   [git.kroshtan.com/kroshtan/unfret_backend](https://git.kroshtan.com/kroshtan/unfret_backend) ·
   [GitHub mirror](https://github.com/kroshtan/unfret_backend)
-- Browser extension: [git.kroshtan.com/kroshtan/unfret_extension](https://git.kroshtan.com/kroshtan/unfret_extension)
-- This app: [git.kroshtan.com/kroshtan/unfret_android](https://git.kroshtan.com/kroshtan/unfret_android)
+- Browser extension: [git.kroshtan.com/kroshtan/unfret_extension](https://git.kroshtan.com/kroshtan/unfret_extension) ·
+  [GitHub mirror](https://github.com/kroshtan/unfret_extension)
+- This app: [git.kroshtan.com/kroshtan/unfret_android](https://git.kroshtan.com/kroshtan/unfret_android) ·
+  [GitHub mirror](https://github.com/kroshtan/unfret_android)
 
 ## How accurate it is
 
