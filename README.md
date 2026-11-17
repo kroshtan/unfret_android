@@ -8,6 +8,42 @@ Unfret reads it on the phone and tells you in plain words whether it all adds up
 
 Android only. English. No ads, no trackers, no Google Play Services, no analytics or crash reporting.
 
+- Website: [unfret.net](https://unfret.net) · [check a link](https://unfret.net/check) ·
+  [developers and AI agents](https://unfret.net/developers)
+- The service behind it (API, website, scoring):
+  [git.kroshtan.com/kroshtan/unfret_backend](https://git.kroshtan.com/kroshtan/unfret_backend) ·
+  [GitHub mirror](https://github.com/kroshtan/unfret_backend)
+- Browser extension: [git.kroshtan.com/kroshtan/unfret_extension](https://git.kroshtan.com/kroshtan/unfret_extension)
+- This app: [git.kroshtan.com/kroshtan/unfret_android](https://git.kroshtan.com/kroshtan/unfret_android)
+
+## How accurate it is
+
+The app reads the page; the verdict comes from the Unfret service. On Unfret's labelled corpus of **1,582 product
+pages** (scam shops, junk and dropshipping, and legitimate shops), replayed through the analysis with the open
+baseline model, the score has a **ROC AUC of 0.897**:
+
+| Verdict | Pages | Scam or junk among them |
+| --- | --- | --- |
+| Serious concerns | 282 | 95% |
+| Think twice | 423 | 82% |
+| Worth a look | 404 | 46% |
+| Looks fine | 464 | 7% |
+
+Think twice or Serious concerns catches 74% of the scam and junk pages, with 12% of legitimate pages getting one
+(false alarms). The corpus includes the pages the model was trained on, so expect somewhat lower numbers on new pages;
+details in the [backend's README](https://git.kroshtan.com/kroshtan/unfret_backend#how-accurate-it-is).
+
+**The model.** The scoring model in the backend repository is an open baseline, and a self-hosted Unfret uses it.
+The service at unfret.net runs privately retrained versions of it. The labelled corpus and the duplicate-product image
+dataset are private.
+
+## Run it against your own server
+
+Release builds talk to unfret.net only. To use your own Unfret (the backend's
+[self-host steps](https://git.kroshtan.com/kroshtan/unfret_backend#run-your-own)), serve it over HTTPS, put its
+address in `UnfretApi.DEV` (`app/src/main/java/net/unfret/android/UnfretApi.kt`), build a debug APK (`make apk`,
+see [Building](#building)) and turn on the app's dev-server switch.
+
 ## Privacy, in plain words
 
 - **Nothing is read until you tap Check this page.** Loading a page sends nothing to Unfret.
