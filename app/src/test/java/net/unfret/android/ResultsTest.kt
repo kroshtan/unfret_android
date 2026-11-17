@@ -78,4 +78,71 @@ class ResultsTest {
         assertEquals("https://unfret.net/checkout?mode=topup", checkoutUrl(UnfretApi.PRODUCTION, hasKey = true))
         assertEquals("https://dev.unfret.net/checkout?mode=code", codeUrl(UnfretApi.DEV))
     }
+
+    @Test
+    fun `the result card has sources, the same product, the next step and what was checked`() {
+        val result = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 35, "explanation": "x", "report_token": "rt1", "verdict": {"band": "careful",
+                "label": "Think twice", "headline": "x",
+                "reasons": [{"type": "new_domain", "title": "Brand-new web shop", "detail": "23 days.", "severity": "high",
+                  "source": "Domain registry (RDAP)"}],
+                "positives": [{"title": "Payment with buyer protection", "detail": "", "source": null}],
+                "same_product": {"title": "Looks like the same product, sold elsewhere for ${'$'}12.99", "detail": "d",
+                  "where": "cheap.shop", "image": "https://unfret.net/v1/images/1/thumbnail.jpg", "own_image": null},
+                "next_step": {"type": "shop_reviews", "text": "Look for reviews of the shop."},
+                "checklist": [{"key": "who", "label": "Who's behind the shop", "status": "concern", "note": "Brand-new web shop"},
+                  {"key": "reviews", "label": "Reviews", "status": "not_checked", "note": "The page shows no reviews."},
+                  {"key": "tricks", "label": "Hidden tricks", "status": "checked", "note": ""}],
+                "checks_run": 11}}""",
+            ),
+        )
+        val verdict = result.verdict!!
+        assertEquals("Domain registry (RDAP)", verdict.reasons.single().source)
+        assertEquals("new_domain", verdict.reasons.single().type)
+        assertEquals("", verdict.positives.single().source) // JSON null is no source, not "null"
+        assertEquals("cheap.shop", verdict.sameProduct!!.where)
+        assertNull(verdict.sameProduct!!.ownImage)
+        assertEquals("Look for reviews of the shop.", verdict.nextStep)
+        assertEquals(
+            listOf(CheckStatus.CONCERN, CheckStatus.NOT_CHECKED, CheckStatus.CHECKED),
+            verdict.checklist.map { it.status },
+        )
+        assertEquals(11, verdict.checksRun)
+        assertNull(result.cleanChecks) // a warning, not a clean result
+        assertEquals("rt1", result.reportToken)
+        assertEquals("careful", result.verdictJson!!.optString("band")) // sent back as returned with a report
+    }
+
+    @Test
+    fun `a clean result says how many checks found nothing, and an older one has no card`() {
+        val clean = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 92, "explanation": "x", "verdict": {"band": "reliable", "label": "Looks fine",
+                "headline": "x", "reasons": [], "positives": [], "checks_run": 14}}""",
+            ),
+        )
+        assertEquals(14, clean.cleanChecks)
+        val older = AnalysisResult.parse(
+            JSONObject("""{"score": 92, "explanation": "x", "verdict": {"band": "reliable", "label": "Looks fine", "headline": "x"}}"""),
+        )
+        assertNull(older.cleanChecks)
+        assertTrue(older.verdict!!.checklist.isEmpty())
+        assertNull(older.verdict!!.nextStep)
+        assertNull(older.verdict!!.sameProduct)
+        assertNull(older.reportToken)
+    }
+
+    @Test
+    fun `photos load only from the API's own thumbnail proxy`() {
+        val base = UnfretApi.PRODUCTION
+        assertEquals("https://unfret.net/v1/images/7/thumbnail.jpg", apiImage("https://unfret.net/v1/images/7/thumbnail.jpg", base))
+        assertNull(apiImage("https://dev.unfret.net/v1/images/7/thumbnail.jpg", base))
+        assertNull(apiImage("https://unfret.net.evil.example/v1/images/7/thumbnail.jpg", base))
+        assertNull(apiImage("https://unfret.net/v1/credits", base))
+        assertNull(apiImage("https://unfret.net/v1/images/../credits", base))
+        assertNull(apiImage("https://unfret.net/v1/images/7/thumbnail.jpg?x=1", base))
+        assertNull(apiImage("https://cheap.shop/photo.jpg", base))
+        assertNull(apiImage(null, base))
+    }
 }

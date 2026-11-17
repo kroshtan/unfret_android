@@ -70,10 +70,26 @@
         android:layout_height="wrap_content"
         android:orientation="vertical" />
 
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/wrong_result"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/wrong_result"
+        android:visibility="gone" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/object_result"
+        style="@style/Widget.Material3.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/object_result" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:text="@string/result_notice"
         android:textAppearance="@style/TextAppearance.Unfret.Small" />
 

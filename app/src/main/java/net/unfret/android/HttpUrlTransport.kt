@@ -30,7 +30,12 @@ class HttpUrlTransport : Transport {
             val status = connection.responseCode
             val stream = (if (status >= HttpURLConnection.HTTP_BAD_REQUEST) connection.errorStream else connection.inputStream)
                 ?: "".byteInputStream()
-            return HttpResponse(status, BufferedReader(InputStreamReader(stream, Charsets.UTF_8))) { connection.disconnect() }
+            return HttpResponse(
+                status,
+                BufferedReader(InputStreamReader(stream, Charsets.UTF_8)),
+                { connection.disconnect() },
+                stream,
+            )
         } catch (e: IOException) {
             connection.disconnect()
             throw e

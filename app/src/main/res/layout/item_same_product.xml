@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same product sold elsewhere (Unfret's image index), first on the card: the title, both photos, the detail. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="16dp"
+    android:orientation="horizontal">
+
+    <View
+        android:layout_width="4dp"
+        android:layout_height="match_parent"
+        android:background="@color/note"
+        android:importantForAccessibility="no" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/same_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.Unfret.Title" />
+
+        <LinearLayout
+            android:id="@+id/same_photos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:id="@+id/own_photo_box"
+                android:layout_width="112dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="12dp"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/own_photo"
+                    android:layout_width="112dp"
+                    android:layout_height="112dp"
+                    android:background="@color/surface_2"
+                    android:contentDescription="@string/same_product_own_photo"
+                    android:scaleType="centerCrop" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:importantForAccessibility="no"
+                    android:text="@string/same_product_this_page"
+                    android:textAppearance="@style/TextAppearance.Unfret.Small" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/other_photo_box"
+                android:layout_width="112dp"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/other_photo"
+                    android:layout_width="112dp"
+                    android:layout_height="112dp"
+                    android:background="@color/surface_2"
+                    android:contentDescription="@string/same_product_other_photo_any"
+                    android:scaleType="centerCrop" />
+
+                <TextView
+                    android:id="@+id/other_where"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:importantForAccessibility="no"
+                    android:textAppearance="@style/TextAppearance.Unfret.Small" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/same_detail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textAppearance="@style/TextAppearance.Unfret.Body" />
+    </LinearLayout>
+</LinearLayout>

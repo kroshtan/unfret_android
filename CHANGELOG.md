@@ -4,6 +4,14 @@
 
 The first version: debug builds only.
 
+- **The result card**, as on the website and in the extension: the same product sold elsewhere first, with both
+  photos (thumbnails from `unfret.net` itself), each finding with its source ("Source: Domain registry (RDAP)"), "What
+  you can do" (one next step), "What we checked" (ticked, marked, or not checked and why; "What we checked · 11
+  checks"), and on a clean result "Nothing worrying in 14 checks." The sections are named as on the website ("What
+  we noticed", "What looks good"). Results without these fields look as before.
+- **Wrong result?** under a result reports it (`POST /v1/reports`) after you choose what the page really is, with
+  the same consent text as the extension; **Your shop? Object to this result** opens `unfret.net/objection` in the
+  browser. The privacy statement says what a report sends and where the photos come from.
 - In Android's share sheet as "Check with Unfret" (a link, or text with a link in it), and openable from the
   launcher with a field to paste a link.
 - The page opens in a visible WebView over the phone's own connection (HTTPS only; plain `http://` links are opened
