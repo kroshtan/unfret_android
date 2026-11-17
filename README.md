@@ -115,6 +115,20 @@ installing from that source).
 CI (`.forgejo/workflows/ci.yaml`, runner `kroshtan-public`) runs the same checks in the same images. Releases and
 signing: [docs/RELEASING.md](docs/RELEASING.md).
 
+### Pull requests and CI
+
+CI checks a pull request once it is ready to merge, not every push while it's being worked on:
+
+- **Open it as a draft:** start the title with `WIP:` (for example `WIP: Shorter result card`). Forgejo shows it as
+  a work in progress and CI skips it, however often you push.
+- **Ready to merge? Take `WIP:` off the title.** That starts CI on the newest commit. Merge when it's green.
+- A push to a ready pull request runs CI again and cancels the run still going for the commit before. Editing its
+  description or title doesn't check it again: that run reports the result the commit already has (to retry a
+  failure that wasn't the code's, re-run its run under Actions).
+- Back to work on it: put `WIP:` back in front.
+
+On `main`, a newer commit's run cancels the older one's too: nothing here deploys.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).
