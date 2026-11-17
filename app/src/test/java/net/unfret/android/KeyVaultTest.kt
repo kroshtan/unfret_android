@@ -40,6 +40,7 @@ class KeyVaultTest {
     fun `a pasted key is normalised`() {
         assertEquals(key, ApiKeys.normalize("  ${key.uppercase().substring(0, 20)}\n${key.uppercase().substring(20)} "))
         assertEquals("abcdefgh23", ApiKeys.idOf(key))
+        assertEquals("ABCDE-FGH23", ApiKeys.shownId(key)) // an Unfret pass's ID as the website shows it
     }
 
     @Test

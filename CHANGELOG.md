@@ -18,5 +18,11 @@ The first version: debug builds only.
   browser; nothing is sold in the app.
 - Privacy: an intro to accept first; the WebView runs in its own process whose data is deleted, and which ends,
   when the page is closed; no backups; no third-party SDKs; requests identify only the app and its version.
+- The four verdicts in the website's words: Looks fine, Worth a look, Think twice, Serious concerns (the server's
+  label, as before; these words are shown when a result comes without one). A verdict below "Looks fine" always names
+  a reason ("Several small signals" when a result has none), and a reason's medium severity is read out as "Notable".
+- The website's words for the key: an **Unfret pass**, named by its ID as the site shows it ("Unfret pass ABCDE-FGHIJ
+  on this phone"), and its **backup code** (no more "API key" and "recovery code"). Only the words: the key and how
+  it is stored are unchanged.
 - Build: pinned docker images (`make build|apk|test|lint|check|extractor`), Gradle wrapper 9.9.1, AGP 9.5.1,
   compile/target SDK 36, min SDK 26. CI on the public runner.

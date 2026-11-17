@@ -15,7 +15,7 @@ Android only. English. No ads, no trackers, no Google Play Services, no analytic
   ([extractor/](extractor/README.md)): product facts and the visible text, from a copy of the page. Account menus,
   greetings, forms and their fields, checkout, billing and delivery areas, and any address that isn't the
   business's own are removed first. On a private seller's ad the seller's name is never read.
-- **Sent, only to unfret.net:** the page address, those facts and that text, and your Unfret key. No device details
+- **Sent, only to unfret.net:** the page address, those facts and that text, and your Unfret pass. No device details
   (the app identifies itself as `Unfret-Android/<version>`, not your phone's model), no location, no contacts.
 - **Kept on the phone:** your key (encrypted with a key in the Android Keystore), whether you accepted the intro,
   and nothing else. The pages you open are forgotten: the WebView runs in its own process, and when you close the
@@ -26,9 +26,9 @@ The full statement is [PRIVACY.md](PRIVACY.md).
 
 ## Checks and your key
 
-Each check uses one check from your Unfret key (`ufk_…`). Paste the key once; the app shows how many checks are
+Each check uses one check from your Unfret pass (an API key, `ufk_…`). Paste the pass once; the app shows how many checks are
 left. **Nothing is sold in the app**: "Get checks" and "Have a code?" open unfret.net's checkout in your browser,
-where checks are bought or a code is redeemed onto a key.
+where checks are bought or a code is redeemed onto a pass.
 
 ## How it works
 

@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
         val current = key
         setKey.setText(if (current == null) R.string.paste_key else R.string.change_key)
         removeKey.visibility = if (current == null) View.GONE else View.VISIBLE
-        keyStatus.text = if (current == null) getString(R.string.no_key) else getString(R.string.key_in_use, "ufk_${ApiKeys.idOf(current)}")
+        keyStatus.text = if (current == null) getString(R.string.no_key) else getString(R.string.key_in_use, ApiKeys.shownId(current))
         if (current == null) credits.text = ""
     }
 

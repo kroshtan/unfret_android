@@ -39,6 +39,7 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         label.text = when {
             !result.assessed -> context.getString(R.string.not_assessed)
             verdict != null && verdict.label.isNotEmpty() -> verdict.label
+            band != null -> context.getString(bandLabel(band))
             else -> context.getString(R.string.result_title)
         }
         headline.text = verdict?.headline?.takeIf { it.isNotEmpty() } ?: result.explanation
@@ -46,7 +47,17 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         noCheck.visibility = if (result.charged == false || !result.assessed) View.VISIBLE else View.GONE
 
         sections.removeAllViews()
-        val reasons = result.reasonsToShow
+        val reasons = if (result.needsOverallReason) {
+            listOf(
+                Reason(
+                    context.getString(R.string.reason_overall_title),
+                    context.getString(R.string.reason_overall_detail),
+                    Severity.LOW,
+                ),
+            )
+        } else {
+            result.reasonsToShow
+        }
         val positives = verdict?.positives.orEmpty()
         if (result.positivesFirst) {
             addPositives(positives)
@@ -104,6 +115,14 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
             detailView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         sections.addView(item)
+    }
+
+    /** The band in words (the website's), for a result without the server's label. */
+    private fun bandLabel(band: Band): Int = when (band) {
+        Band.RELIABLE -> R.string.band_reliable
+        Band.CONCERNS -> R.string.band_concerns
+        Band.CAREFUL -> R.string.band_careful
+        Band.JUNK_OR_SCAM -> R.string.band_junk_or_scam
     }
 
     /** The band's strong and soft colours (the website's good / note / care / stop). */
