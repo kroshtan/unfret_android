@@ -3,6 +3,7 @@ package net.unfret.android
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.Closeable
+import java.io.InputStream
 
 /** An error answer from the API, in its `{detail, error_code}` shape. */
 class ApiError(val status: Int, val code: String, detail: String) : Exception(detail) {
@@ -13,13 +14,38 @@ class ApiError(val status: Int, val code: String, detail: String) : Exception(de
 
 data class HttpRequest(val method: String, val url: String, val headers: Map<String, String>, val body: String?)
 
-class HttpResponse(val status: Int, val reader: BufferedReader, private val onClose: () -> Unit = {}) : Closeable {
+class HttpResponse(
+    val status: Int,
+    val reader: BufferedReader,
+    private val onClose: () -> Unit = {},
+    /** The raw body, for binary answers (a thumbnail); read either this or [reader], never both. */
+    private val raw: InputStream? = null,
+) : Closeable {
+    /** The body as bytes, at most [MAX_BYTES]. */
+    fun bytes(): ByteArray? {
+        val stream = raw ?: return reader.readText().toByteArray()
+        val out = java.io.ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        while (true) {
+            val n = stream.read(buffer)
+            if (n < 0) break
+            out.write(buffer, 0, n)
+            if (out.size() > MAX_BYTES) return null
+        }
+        return out.toByteArray()
+    }
+
     override fun close() {
         try {
             reader.close()
         } finally {
             onClose()
         }
+    }
+
+    private companion object {
+        /** A thumbnail is a few kilobytes; nothing near this. */
+        const val MAX_BYTES = 512 * 1024
     }
 }
 
@@ -87,6 +113,26 @@ class UnfretApi(private val base: String, private val key: String, private val t
         }
     }
 
+    /**
+     * `POST /v1/reports`: "Wrong result?". [request] is the analysed request exactly as sent, [verdict] and
+     * [explanation] the result as returned; [reason] one of real_brand, scam, junk, other. The user agreed to share
+     * this one check's page facts, page text and result for review (`consent`). Returns the outcome: queued,
+     * already_reported or already_known. Throws [ApiError] for an error answer.
+     */
+    fun report(token: String, reason: String, request: JSONObject, explanation: String, verdict: JSONObject?): String {
+        val body = JSONObject()
+            .put("report_token", token)
+            .put("reason", reason)
+            .put("consent", true)
+            .put("request", request)
+            .put("explanation", explanation)
+        if (verdict != null) body.put("verdict", verdict)
+        return transport.send(HttpRequest("POST", "$base/v1/reports", headers(true), body.toString())).use { response ->
+            if (response.status !in 200..299) throw errorFrom(response)
+            JSONObject(response.reader.readText()).optString("status", "queued")
+        }
+    }
+
     private fun errorFrom(response: HttpResponse): ApiError {
         val body = try {
             JSONObject(response.reader.readText())
@@ -101,6 +147,22 @@ class UnfretApi(private val base: String, private val key: String, private val t
     }
 
     companion object {
+        /**
+         * A photo from the API's own thumbnail proxy ([apiImage] decides which URLs qualify), without the key: the
+         * thumbnails are public. Returns null when it can't be loaded.
+         */
+        fun thumbnail(url: String, base: String, transport: Transport): ByteArray? {
+            if (base !in BASES || apiImage(url, base) == null) return null
+            val headers = mapOf("User-Agent" to USER_AGENT, "Accept" to "image/jpeg")
+            return try {
+                transport.send(HttpRequest("GET", url, headers, null)).use { response ->
+                    if (response.status != 200) null else response.bytes()
+                }
+            } catch (_: java.io.IOException) {
+                null
+            }
+        }
+
         const val PRODUCTION = "https://unfret.net"
         const val DEV = "https://dev.unfret.net"
 

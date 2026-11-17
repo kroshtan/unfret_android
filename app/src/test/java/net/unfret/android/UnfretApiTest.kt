@@ -119,4 +119,42 @@ class UnfretApiTest {
         assertThrows(IllegalArgumentException::class.java) { UnfretApi("https://evil.example", key, FakeTransport(200, "{}")) }
         assertThrows(IllegalArgumentException::class.java) { UnfretApi("http://unfret.net", key, FakeTransport(200, "{}")) }
     }
+
+    @Test
+    fun `a report sends the request as it was sent, the result as returned, and the consent`() {
+        val transport = FakeTransport(201, """{"status":"already_reported","reports_used":1,"reports_per_month":5}""")
+        val request = JSONObject("""{"url":"https://shop.example/p","page_facts":{"title":"Lamp"}}""")
+        val outcome = UnfretApi(UnfretApi.DEV, key, transport).report("rt1", "junk", request, "x", JSONObject(verdict))
+
+        assertEquals("already_reported", outcome)
+        val sent = transport.sent.single()
+        assertEquals("https://dev.unfret.net/v1/reports", sent.url)
+        assertEquals("Bearer $key", sent.headers["Authorization"])
+        val body = JSONObject(sent.body!!)
+        assertEquals("rt1", body.getString("report_token"))
+        assertEquals("junk", body.getString("reason"))
+        assertTrue(body.getBoolean("consent"))
+        assertEquals("https://shop.example/p", body.getJSONObject("request").getString("url"))
+        assertEquals("careful", body.getJSONObject("verdict").getString("band"))
+    }
+
+    @Test
+    fun `a refused report says why`() {
+        val transport = FakeTransport(429, """{"detail":"limit","error_code":"REPORT_LIMIT"}""")
+        val error = assertThrows(ApiError::class.java) {
+            UnfretApi(UnfretApi.PRODUCTION, key, transport).report("rt1", "other", JSONObject(), "x", null)
+        }
+        assertEquals("REPORT_LIMIT", error.code)
+    }
+
+    @Test
+    fun `thumbnails come only from the API's own image proxy, without the pass`() {
+        val transport = FakeTransport(200, "jpeg")
+        val url = "https://unfret.net/v1/images/3/thumbnail.jpg"
+        assertEquals("jpeg", String(UnfretApi.thumbnail(url, UnfretApi.PRODUCTION, transport)!!))
+        assertFalse("Authorization" in transport.sent.single().headers)
+        assertNull(UnfretApi.thumbnail("https://cheap.shop/p.jpg", UnfretApi.PRODUCTION, transport))
+        assertNull(UnfretApi.thumbnail(url, "https://evil.example", transport))
+        assertEquals(1, transport.sent.size) // nothing else was fetched
+    }
 }

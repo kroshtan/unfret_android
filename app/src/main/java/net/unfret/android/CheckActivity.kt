@@ -3,6 +3,7 @@ package net.unfret.android
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -17,6 +18,7 @@ import android.webkit.WebSettings
 import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -26,6 +28,7 @@ import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import org.json.JSONObject
 import java.util.concurrent.ExecutorService
@@ -55,6 +58,10 @@ class CheckActivity : AppCompatActivity() {
     private lateinit var key: String
     private lateinit var base: String
     private var bundle: String = ""
+
+    /** The check on screen and the request it was made from, for "Wrong result?". */
+    private var shown: AnalysisResult? = null
+    private var shownRequest: JSONObject? = null
 
     /** A check is being read or sent: the button does nothing until it's over (each check costs one). */
     private var busy = false
@@ -109,6 +116,10 @@ class CheckActivity : AppCompatActivity() {
         showHost(url)
         resultView.onBackToPage = { showPage() }
         resultView.onDone = { finish() }
+        resultView.base = base
+        resultView.loadImage = ::loadThumbnail
+        resultView.onReport = ::askReport
+        resultView.onObject = { openInBrowser("$base/objection") }
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {
@@ -262,8 +273,10 @@ class CheckActivity : AppCompatActivity() {
         status.setText(R.string.sending)
         background.execute {
             var steps = 0
+            var request: JSONObject? = null
             val outcome = try {
                 val body = AnalyzeRequest.fromExtraction(extraction)
+                request = body
                 Result.success(
                     UnfretApi(base, key, HttpUrlTransport()).analyze(body) {
                         steps++
@@ -281,6 +294,7 @@ class CheckActivity : AppCompatActivity() {
             runOnUiThread {
                 if (isDestroyed) return@runOnUiThread
                 busy = false
+                shownRequest = request
                 outcome.fold(::showResult, ::showProblem)
             }
         }
@@ -316,6 +330,7 @@ class CheckActivity : AppCompatActivity() {
     }
 
     private fun showResult(result: AnalysisResult) {
+        shown = result
         resultView.show(result)
         web.visibility = View.INVISIBLE
         bar.visibility = View.GONE
@@ -324,6 +339,74 @@ class CheckActivity : AppCompatActivity() {
         resultPanel.scrollTo(0, 0)
         toolbar.setTitle(R.string.result_title)
         resultPanel.requestFocus()
+    }
+
+    /** A thumbnail from the API's own image proxy, decoded off the main thread. */
+    private fun loadThumbnail(url: String, done: (Bitmap?) -> Unit) {
+        background.execute {
+            val bytes = UnfretApi.thumbnail(url, base, HttpUrlTransport())
+            val bitmap = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+            runOnUiThread { if (!isDestroyed) done(bitmap) }
+        }
+    }
+
+    /** "Wrong result?": what the page really is, with what a report shares, then send it (`POST /v1/reports`). */
+    private fun askReport() {
+        val result = shown ?: return
+        val token = result.reportToken ?: return
+        val request = shownRequest ?: return
+        val view = layoutInflater.inflate(R.layout.dialog_report, null)
+        val reasons = view.findViewById<RadioGroup>(R.id.report_reasons)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.report_title)
+            .setView(view)
+            .setPositiveButton(R.string.report_send, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.setOnShowListener {
+            val send = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+            send.isEnabled = false
+            reasons.setOnCheckedChangeListener { _, _ -> send.isEnabled = true }
+            send.setOnClickListener {
+                val reason = when (reasons.checkedRadioButtonId) {
+                    R.id.reason_real_brand -> "real_brand"
+                    R.id.reason_scam -> "scam"
+                    R.id.reason_junk -> "junk"
+                    else -> "other"
+                }
+                dialog.dismiss()
+                sendReport(result, token, reason, request)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun sendReport(result: AnalysisResult, token: String, reason: String, request: JSONObject) {
+        resultView.setReportable(false)
+        Toast.makeText(this, R.string.report_sending, Toast.LENGTH_SHORT).show()
+        background.execute {
+            val message = try {
+                when (UnfretApi(base, key, HttpUrlTransport()).report(token, reason, request, result.explanation, result.verdictJson)) {
+                    "already_reported" -> R.string.report_already_reported
+                    "already_known" -> R.string.report_already_known
+                    else -> R.string.report_queued
+                }
+            } catch (e: ApiError) {
+                when (e.code) {
+                    "REPORT_LIMIT" -> R.string.report_limit
+                    "ALREADY_REPORTED_BY_YOU" -> R.string.report_by_you
+                    "BAD_REPORT_TOKEN" -> R.string.report_expired
+                    else -> R.string.report_failed
+                }
+            } catch (_: Exception) {
+                R.string.report_failed
+            }
+            runOnUiThread {
+                if (isDestroyed) return@runOnUiThread
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                if (message == R.string.report_failed) resultView.setReportable(true)
+            }
+        }
     }
 
     private fun showPage() {

@@ -39,11 +39,19 @@ work in the app the same way.
 When you save a pass, and when the home screen shows your remaining checks, the app asks `unfret.net` for the
 pass's balance (with the pass). Requests name the app and its version (`Unfret-Android/0.1.0`), not your phone.
 
+A result that found the same product on another shop shows both photos as small thumbnails, which the app loads
+from `unfret.net` itself (`/v1/images/…`, without your pass): your phone never contacts the other shop.
+
+If you tap **Wrong result?** under a result, choose what the page really is and tap "Send report", that one check's
+request (the page address, product facts and text the app sent), its result and your pass go to `unfret.net` for
+review, as described at <https://unfret.net/privacy> ("Reporting a wrong result"). Nothing is sent until you tap
+"Send report".
+
 The app makes no other requests: no analytics, no trackers, no advertising or crash-reporting services, no Google
 Play Services. The page you open is loaded by Android's system WebView, which talks to that page's own servers
 like any browser; its usage statistics are switched off for this app.
 
-"Get checks", "Have a code?" and "Privacy policy" open unfret.net in your own browser; whatever you do there is
+"Get checks", "Have a code?", "Your shop? Object to this result" and "Privacy policy" open unfret.net in your own browser; whatever you do there is
 covered by the website's policy, not by the app.
 
 ## What is stored on your phone

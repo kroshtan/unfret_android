@@ -87,8 +87,44 @@
     <string name="reason_overall_detail">No single big problem, but several smaller signals together lowered the score.</string>
     <string name="not_assessed">This page couldn\'t be checked</string>
     <string name="no_check_used">No check was used.</string>
-    <string name="reasons_title">What stood out</string>
-    <string name="positives_title">Good signs</string>
+    <string name="reasons_title">What we noticed</string>
+    <string name="positives_title">What looks good</string>
+    <!-- The result card, in the website's and the extension's words -->
+    <string name="source_line">Source: %1$s</string>
+    <string name="next_step_title">What you can do</string>
+    <string name="checklist_title">What we checked</string>
+    <plurals name="checklist_title_count">
+        <item quantity="one">What we checked · %1$d check</item>
+        <item quantity="other">What we checked · %1$d checks</item>
+    </plurals>
+    <plurals name="clean_result">
+        <item quantity="one">Nothing worrying in %1$d check.</item>
+        <item quantity="other">Nothing worrying in %1$d checks.</item>
+    </plurals>
+    <string name="check_checked">checked</string>
+    <string name="check_concern">something to note</string>
+    <string name="check_not_checked">not checked</string>
+    <string name="same_product_this_page">This page</string>
+    <string name="same_product_own_photo">This page\'s product photo</string>
+    <string name="same_product_other_photo">The same photo on %1$s</string>
+    <string name="same_product_other_photo_any">The same photo on another shop</string>
+    <string name="wrong_result">Wrong result?</string>
+    <string name="object_result">Your shop? Object to this result</string>
+    <string name="report_title">What is this page really?</string>
+    <string name="report_real_brand">A real brand or shop</string>
+    <string name="report_scam">A scam</string>
+    <string name="report_junk">Junk or dropshipping</string>
+    <string name="report_other">Something else</string>
+    <string name="report_consent">Sending this shares this one check\'s product facts, page text and result with Unfret for review. Personal details are removed first; once reviewed, it is kept without any link to you. If the score was far off, you get free checks.</string>
+    <string name="report_send">Send report</string>
+    <string name="report_sending">Sending…</string>
+    <string name="report_queued">Thanks! We\'ll review this page. If we got it badly wrong, you get free checks.</string>
+    <string name="report_already_reported">Thanks! Someone reported this page first; your report counts as confirmation.</string>
+    <string name="report_already_known">Thanks! We reviewed this page recently.</string>
+    <string name="report_limit">You\'ve used this month\'s reports. Thank you!</string>
+    <string name="report_by_you">You\'ve already reported this page.</string>
+    <string name="report_expired">This check can\'t be reported any more; check the page again first.</string>
+    <string name="report_failed">The report didn\'t go through. Please try again later.</string>
     <string name="back_to_page">Back to the page</string>
     <string name="done">Done</string>
     <string name="result_notice">Unfret reports risk signals from what the page shows; it never calls a shop a scam. The page may change after this check.</string>

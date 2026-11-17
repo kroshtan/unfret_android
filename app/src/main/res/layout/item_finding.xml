@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One reason or good sign: a coloured mark, the title, the detail. -->
+<!-- One reason or good sign: a coloured mark, the title, the detail, and where the evidence comes from. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -31,5 +31,13 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:textAppearance="@style/TextAppearance.Unfret.Body" />
+
+        <TextView
+            android:id="@+id/source"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textAppearance="@style/TextAppearance.Unfret.Small"
+            android:visibility="gone" />
     </LinearLayout>
 </LinearLayout>
