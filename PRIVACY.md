@@ -1,6 +1,6 @@
 # Unfret privacy policy (Android app)
 
-_Last updated: 15 November 2026 (version 0.1.0). Draft for the store listing; to be reviewed before publication._
+_Last updated: 17 November 2026 (version 0.1.0: "Unfret pass" wording, free checks, contact hello@unfret.net). Draft for the store listing; to be reviewed before publication._
 
 Unfret is made by Kroshtan (Floris van Beers, the Netherlands). The app works like the Unfret browser extension
 and follows the same rules; the extension's policy is in its repository, the server's at <https://unfret.net/privacy>.
@@ -30,7 +30,11 @@ The page itself is not changed. The code that does this is the browser extension
 Only to the Unfret API (`unfret.net`, hosted in the EU), when you tap "Check this page":
 
 - the page address, and the product facts and text described above;
-- your Unfret pass (an API key, `ufk_…`), which identifies the account whose checks are used.
+- your Unfret pass (an anonymous key, `ufk_…`: no name, no e-mail, no account), whose checks the check uses.
+
+The app doesn't make a pass itself: you paste one you have from unfret.net (with a pack you bought, a gift code from
+a friend, or the free pass the link checker made for you). Whatever checks the pass holds, free checks included,
+work in the app the same way.
 
 When you save a pass, and when the home screen shows your remaining checks, the app asks `unfret.net` for the
 pass's balance (with the pass). Requests name the app and its version (`Unfret-Android/0.1.0`), not your phone.
@@ -50,7 +54,8 @@ covered by the website's policy, not by the app.
 
 Nothing about the pages you check. The built-in browser starts empty for every page; when you close it, its
 cookies, site storage, cache and other files are deleted and its process ends. Results are shown, never saved.
-**Remove key** removes the key; uninstalling the app removes everything.
+**Remove pass** removes the pass from the phone (its checks stay on the pass); uninstalling the app removes
+everything.
 
 ## On the server
 
@@ -59,4 +64,4 @@ described at <https://unfret.net/privacy>.
 
 ## Questions
 
-See the contact details at kroshtan.com.
+Write to [hello@unfret.net](mailto:hello@unfret.net).
