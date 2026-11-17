@@ -1,5 +1,7 @@
 # Unfret for Android
 
+![Unfret checking a test shop: Serious concerns, with a fake countdown, a pre-ticked extra and an unbelievable discount](docs/demo.gif)
+
 Check a product page, a second-hand ad or a service provider's page from your phone. Share a link to Unfret (from
 a browser, Marktplaats, Vinted, eBay, Facebook or any other app) or paste it in the app. The page opens inside
 Unfret, **on your phone, over your own connection**, so shops that refuse servers still show it and you can deal
