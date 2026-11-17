@@ -21,7 +21,7 @@ keystore.properties
 extractor/node_modules/
 extractor/.extension/
 node_modules/
-# Taiga upload rules (the metarepo's scripts/taiga-zip.sh)
+# Generated output
 .venv/
 venv/
 __pycache__/
