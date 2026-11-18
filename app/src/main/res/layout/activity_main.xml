@@ -145,6 +145,38 @@
                             android:text="@string/account_title"
                             android:textAppearance="@style/TextAppearance.Unfret.Title" />
 
+                        <LinearLayout
+                            android:id="@+id/pass_ended"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:accessibilityLiveRegion="polite"
+                            android:orientation="vertical"
+                            android:visibility="gone">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/pass_ended"
+                                android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
+                                android:textColor="@color/ink" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="@string/pass_ended_next"
+                                android:textAppearance="@style/TextAppearance.Unfret.Small" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/new_pass"
+                                style="@style/Widget.Material3.Button"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="8dp"
+                                android:text="@string/new_pass" />
+                        </LinearLayout>
+
                         <TextView
                             android:id="@+id/credits"
                             android:layout_width="match_parent"

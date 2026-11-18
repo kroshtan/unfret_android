@@ -58,7 +58,8 @@ see [Building](#building)) and turn on the app's dev-server switch.
 - **Sent, only to unfret.net:** the page address, those facts and that text, and your Unfret pass. No device details
   (the app identifies itself as `Unfret-Android/<version>`, not your phone's model), no location, no contacts.
 - **Kept on the phone:** your key (encrypted with a key in the Android Keystore), whether you accepted the intro,
-  and nothing else. The pages you open are forgotten: the WebView runs in its own process, and when you close the
+  for a moment that your pass ended (the server no longer knows it; the home screen says so once), and nothing
+  else. The pages you open are forgotten: the WebView runs in its own process, and when you close the
   page its cookies, storage, cache and other files are deleted and that process ends. Nothing goes into Android
   backups.
 

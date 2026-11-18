@@ -91,4 +91,55 @@ class KeyVaultTest {
     fun `refuses to store something that isn't a key`() {
         assertThrows(IllegalArgumentException::class.java) { KeyVault(MemoryStore(), FakeBox()).save("hello") }
     }
+
+    @Test
+    fun `a stored pass the server rejects is forgotten, with a one-time note`() {
+        val store = MemoryStore()
+        val vault = KeyVault(store, FakeBox())
+        vault.save(key)
+
+        assertTrue(vault.rejected(key))
+
+        assertNull(vault.load())
+        assertFalse(store.values.values.any { it.contains("ufk_") })
+        assertTrue(KeyVault(store, FakeBox()).takeEndedNotice()) // kept across restarts until shown
+        assertFalse(vault.takeEndedNotice()) // said once
+        assertFalse(vault.rejected(key)) // nothing left to forget, no second note
+        assertFalse(vault.takeEndedNotice())
+    }
+
+    @Test
+    fun `a pass that isn't the stored one is left alone when rejected`() {
+        val store = MemoryStore()
+        val vault = KeyVault(store, FakeBox())
+        val other = "ufk_zyxwvuts23_" + "c".repeat(52)
+
+        // Pasting: the key is saved only once the server knows it, so a rejected paste changes nothing.
+        assertFalse(vault.rejected(other))
+        assertNull(vault.load())
+        assertFalse(vault.takeEndedNotice())
+
+        // The user changed pass while a check with the old one was under way: the new one stays.
+        vault.save(key)
+        assertFalse(vault.rejected(other))
+        assertEquals(key, vault.load())
+        assertFalse(vault.takeEndedNotice())
+    }
+
+    @Test
+    fun `pasting a new pass clears the note`() {
+        val store = MemoryStore()
+        val vault = KeyVault(store, FakeBox())
+        vault.save(key)
+        vault.rejected(key)
+
+        vault.save("ufk_zyxwvuts23_" + "c".repeat(52))
+
+        assertFalse(vault.takeEndedNotice())
+    }
+
+    @Test
+    fun `a new pass with free checks comes from the link checker`() {
+        assertEquals("https://unfret.net/check", freePassUrl("https://unfret.net"))
+    }
 }

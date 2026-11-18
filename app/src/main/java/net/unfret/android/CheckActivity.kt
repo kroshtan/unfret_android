@@ -325,6 +325,9 @@ class CheckActivity : AppCompatActivity() {
                 action.setOnClickListener { openInBrowser(checkoutUrl(base, hasKey = true)) }
             }
             Problem.BAD_KEY -> {
+                // The stored pass ended (Unfret retired its old passes, or it was replaced): the home screen says so.
+                settings.vault.rejected(key)
+                status.setText(R.string.pass_ended)
                 action.setText(R.string.open_home)
                 action.setOnClickListener {
                     startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))

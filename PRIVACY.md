@@ -51,14 +51,17 @@ The app makes no other requests: no analytics, no trackers, no advertising or cr
 Play Services. The page you open is loaded by Android's system WebView, which talks to that page's own servers
 like any browser; its usage statistics are switched off for this app.
 
-"Get checks", "Have a code?", "Your shop? Object to this result" and "Privacy policy" open unfret.net in your own browser; whatever you do there is
+"Get checks", "Get a new pass", "Have a code?", "Your shop? Object to this result" and "Privacy policy" open unfret.net in your own browser; whatever you do there is
 covered by the website's policy, not by the app.
 
 ## What is stored on your phone
 
 - your Unfret pass, encrypted with a key kept in the Android Keystore (it can't be read back off the phone, and it
   isn't included in backups or device transfers);
-- that you accepted the intro screen (and, in test builds only, which server to use).
+- that you accepted the intro screen (and, in test builds only, which server to use);
+- for a moment, that your stored pass ended: when unfret.net no longer knows it (Unfret retired its old passes, or
+  the pass was replaced with its backup code), the app removes it and keeps a yes until the home screen has said so
+  once.
 
 Nothing about the pages you check. The built-in browser starts empty for every page; when you close it, its
 cookies, site storage, cache and other files are deleted and its process ends. Results are shown, never saved.

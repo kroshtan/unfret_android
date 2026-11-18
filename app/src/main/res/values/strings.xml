@@ -29,6 +29,9 @@
     </plurals>
     <string name="get_checks">Get checks</string>
     <string name="have_code">Have a code?</string>
+    <string name="pass_ended">Unfret has a new free start: your old pass has ended.</string>
+    <string name="pass_ended_next">A new pass comes with free deep checks. Get one on unfret.net: check a link there, then copy the pass from My checks and paste it here.</string>
+    <string name="new_pass">Get a new pass</string>
     <string name="paste_key">Paste your pass</string>
     <string name="change_key">Change pass</string>
     <string name="remove_key">Remove pass</string>
@@ -73,7 +76,7 @@
     <string name="problem_no_checks">You have no checks left.</string>
     <string name="problem_failed">The check failed. No check was used.</string>
     <string name="problem_offline">Can\'t reach Unfret. Check your connection and try again.</string>
-    <string name="open_home">Check your pass</string>
+    <string name="open_home">Back to the home screen</string>
 
     <!-- Result -->
     <string name="result_title">Result</string>

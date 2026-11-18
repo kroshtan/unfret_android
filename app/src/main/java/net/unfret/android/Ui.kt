@@ -43,3 +43,6 @@ fun Problem.message(): Int = when (this) {
 fun checkoutUrl(base: String, hasKey: Boolean): String = if (hasKey) "$base/checkout?mode=topup" else "$base/checkout"
 
 fun codeUrl(base: String): String = "$base/checkout?mode=code"
+
+/** Where a new pass with free deep checks comes from: the link checker, which gives a browser its free checks once. */
+fun freePassUrl(base: String): String = "$base/check"
