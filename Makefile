@@ -15,8 +15,9 @@ GRADLE := $(DOCKER_RUN) $(ANDROID_IMAGE) ./gradlew --console=plain
 NODE := $(DOCKER_RUN) -w /work/extractor $(NODE_IMAGE)
 
 APK := app/build/outputs/apk/debug/app-debug.apk
+RELEASE_APK := app/build/outputs/apk/release/app-release-unsigned.apk
 
-.PHONY: build apk test lint check extractor extractor-check extractor-test extractor-deps clean
+.PHONY: build apk release-apk test lint check extractor extractor-check extractor-test extractor-deps clean
 
 ## build: compile the debug app
 build:
@@ -27,6 +28,14 @@ apk: build
 	@mkdir -p dist
 	@version="$$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"; \
 	  cp $(APK) "dist/unfret-$$version-debug.apk" && echo "dist/unfret-$$version-debug.apk"
+
+## release-apk: the release APK, unsigned, at dist/unfret-<version>-unsigned.apk: the same bytes the release workflow
+## signs (its release.json names their SHA-256, unsigned_sha256)
+release-apk:
+	$(GRADLE) assembleRelease
+	@mkdir -p dist
+	@version="$$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"; \
+	  cp $(RELEASE_APK) "dist/unfret-$$version-unsigned.apk" && sha256sum "dist/unfret-$$version-unsigned.apk"
 
 ## test: unit tests (JVM) and the bundled extractor over the extension's fixtures (node + jsdom)
 test: extractor-test

@@ -1,0 +1,237 @@
+name: Release APK
+
+# The signed APK for a direct install (unfret.net/android), released only by hand: Actions → "Release APK" → Run
+# workflow. Nothing runs here automatically. Leave `ref` at `main` to release main's newest commit as
+# v<versionName in app/build.gradle.kts> (refused if that tag already names another commit, or if versionCode isn't
+# above the latest release's: bump both first). Or give an existing release tag, e.g. v0.1.0, to build and attach it
+# again. Either way the commit must be on main with CI passed.
+#
+# It builds the release APK unsigned in CI's pinned image (`make release-apk` at the same commit gives the same bytes;
+# release.json names their SHA-256), then scripts/sign-release.sh checks it (package, version, not debuggable, no
+# permission unfret.net/android doesn't explain), signs it with apksigner (v2 and v3 schemes) with the release key,
+# verifies it (`apksigner verify --print-certs`: one signer, the certificate pinned in docs/release-cert.sha256) and
+# writes SHA256SUMS and release.json. Those three files are attached to the Forgejo release v<version>; an APK
+# already attached is never replaced (a different one stops the run). Then unfret_backend's
+# `make android-release TAG=v<version>` puts the release on unfret.net/android (docs/RELEASING.md).
+#
+# `dry_run` (on by default) builds, signs and verifies everything and prints the facts; it attaches nothing and
+# creates no tag or release.
+#
+# Repo secrets (docs/RELEASING.md): ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and
+# ANDROID_KEY_PASSWORD. They reach only the signing step, on the deploy runner (never the public one). While any is
+# missing the run builds and checks the unsigned APK, says signing isn't set up, and passes.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "main (release main's newest commit) or an existing release tag such as v0.1.0"
+        required: true
+        default: main
+        type: string
+      dry_run:
+        description: "Dry run: build, sign and verify; attach nothing, create no tag or release"
+        required: true
+        default: true
+        type: boolean
+
+concurrency:
+  group: release-unfret-android
+  cancel-in-progress: false
+
+jobs:
+  release-apk:
+    runs-on: kroshtan-deploy
+    container:
+      # The same image as CI and the Makefile; keep the digests in step.
+      image: ghcr.io/cirruslabs/android-sdk:36@sha256:f9b3ea9ed2b5fc9522adae82c7b4622ab7aa54207ef532c8e615a347dca08f31
+    steps:
+      # This image has no node, which actions/checkout needs: fetch with git (the repository is public).
+      - name: Check out
+        env:
+          SERVER: ${{ forgejo.server_url }}
+          REPO: ${{ forgejo.repository }}
+        run: |
+          set -euo pipefail
+          git init -q .
+          git remote add origin "$SERVER/$REPO.git"
+          git fetch -q --tags origin +refs/heads/main:refs/remotes/origin/main
+      - name: Check the release
+        id: release
+        env:
+          REF: ${{ inputs.ref }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          API: ${{ forgejo.server_url }}/api/v1/repos/${{ forgejo.repository }}
+          # Whether the signing secrets are set, never their values.
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          dry="$([[ "$DRY_RUN" == true ]] && echo true || echo false)"
+          # What a real run refuses, a dry run only warns about, so it can show everything else.
+          fail() {
+            if [[ "$dry" == true ]]; then
+              echo "::warning::(dry run; a real run stops here) $*"
+            else
+              echo "::error::$*"
+              exit 1
+            fi
+          }
+          read_version() { sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts; }
+          if [[ "$REF" == main ]]; then
+            sha="$(git rev-parse origin/main)"
+            git checkout -q "$sha"
+            version="$(read_version)"
+            tag="v$version"
+            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+              || { echo "::error::versionName '$version' is not a release version"; exit 1; }
+            if git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
+              [[ "$(git rev-parse "$tag^{commit}")" == "$sha" ]] \
+                || fail "$tag already names another commit: bump versionCode and versionName first"
+            fi
+          else
+            tag="$REF"
+            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
+              || { echo "::error::'$tag' is not main or a release tag like v0.1.0"; exit 1; }
+            git rev-parse -q --verify "refs/tags/$tag" > /dev/null \
+              || { echo "::error::tag $tag does not exist"; exit 1; }
+            sha="$(git rev-parse "$tag^{commit}")"
+            git checkout -q "$sha"
+            version="$(read_version)"
+            [[ "v$version" == "$tag" ]] || { echo "::error::$tag has versionName $version"; exit 1; }
+          fi
+          git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$tag ($sha) is not on main"; exit 1; }
+          version_code="$(sed -n 's/^ *versionCode = \([0-9]*\)$/\1/p' app/build.gradle.kts)"
+          # CI passed for this commit, and versionCode goes up from the latest release's (Android refuses to install a
+          # lower one over a higher). The repository is public: its statuses and releases need no token.
+          problems="$(SHA="$sha" TAG="$tag" CODE="$version_code" python3 -I - <<'PY'
+          import json, os, urllib.error, urllib.request
+
+          env = os.environ
+
+          def get(url):
+              with urllib.request.urlopen(url, timeout=30) as response:
+                  return json.load(response)
+
+          problems = []
+          statuses = get(f"{env['API']}/commits/{env['SHA']}/status").get("statuses") or []
+          state = {s["context"]: s["status"] for s in statuses}
+          for context in ("CI / extractor (push)", "CI / android (push)"):
+              if state.get(context) != "success":
+                  problems.append(f"{context}={state.get(context, 'missing')}")
+          try:
+              latest = get(f"{env['API']}/releases/latest")
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+              latest = None
+          if latest and latest["tag_name"] != env["TAG"]:
+              facts = next((a for a in latest.get("assets", []) if a["name"] == "release.json"), None)
+              if facts:
+                  code = get(facts["browser_download_url"])["version_code"]
+                  if int(env["CODE"]) <= code:
+                      problems.append(f"versionCode {env['CODE']} is not above {latest['tag_name']}'s {code}")
+          print("; ".join(problems))
+          PY
+          )"
+          if [[ -n "$problems" ]]; then
+            fail "not ready to release $tag ($sha): $problems"
+          else
+            echo "CI passed for $sha; versionCode $version_code"
+          fi
+          signing="$HAS_KEYSTORE"
+          if [[ "$signing" != true ]]; then
+            echo "::notice::Release signing isn't set up (repo secrets ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD," \
+              "ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD; docs/RELEASING.md): building and checking the unsigned APK only."
+          fi
+          {
+            echo "sha=$sha"
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "dry_run=$dry"
+            echo "signing=$signing"
+          } >> "$FORGEJO_OUTPUT"
+          echo "Releasing $tag ($sha; dry run: $dry; signing: $signing)"
+      - name: Build the release APK (unsigned)
+        run: |
+          set -euo pipefail
+          ./gradlew --console=plain assembleRelease
+          sha256sum app/build/outputs/apk/release/app-release-unsigned.apk
+      - name: Sign and verify
+        if: steps.release.outputs.signing == 'true'
+        env:
+          RELEASE_COMMIT: ${{ steps.release.outputs.sha }}
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: scripts/sign-release.sh app/build/outputs/apk/release/app-release-unsigned.apk dist/release
+      - name: Attach it to the release
+        if: steps.release.outputs.signing == 'true' && steps.release.outputs.dry_run != 'true'
+        env:
+          TAG: ${{ steps.release.outputs.tag }}
+          SHA: ${{ steps.release.outputs.sha }}
+          VERSION: ${{ steps.release.outputs.version }}
+          TOKEN: ${{ forgejo.token }}
+          API: ${{ forgejo.server_url }}/api/v1/repos/${{ forgejo.repository }}
+          SERVER: ${{ forgejo.server_url }}
+          REPO: ${{ forgejo.repository }}
+        run: |
+          set -euo pipefail
+          auth="Authorization: token $TOKEN"
+          field() { python3 -I -c 'import json, sys; print(json.load(sys.stdin)[sys.argv[1]])' "$1"; }
+          apk="unfret-$VERSION.apk"
+          # Creating the release creates its tag on $SHA when the tag doesn't exist yet.
+          code="$(curl -sS -o release.json.api -w '%{http_code}' -H "$auth" "$API/releases/tags/$TAG")"
+          if [[ "$code" == 200 ]]; then
+            id="$(field id < release.json.api)"
+          elif [[ "$code" != 404 ]]; then
+            echo "::error::looking up release $TAG: HTTP $code"
+            exit 1
+          else
+            body="$(DIGEST="$(field sha256 < dist/release/release.json)" \
+              CERT="$(field cert_sha256 < dist/release/release.json)" \
+              UNSIGNED="$(field unsigned_sha256 < dist/release/release.json)" python3 -I - <<'PY'
+          import json, os
+
+          e = os.environ
+          v = e["VERSION"]
+          print(json.dumps({
+              "tag_name": e["TAG"],
+              "target_commitish": e["SHA"],
+              "name": f"Unfret for Android {v}",
+              "body": (
+                  f"The signed APK of Unfret for Android {v}, for a direct install: https://unfret.net/android\n\n"
+                  f"- `unfret-{v}.apk` SHA-256: `{e['DIGEST']}` (also in SHA256SUMS)\n"
+                  f"- Signing certificate SHA-256: `{e['CERT']}` (`apksigner verify --print-certs`)\n"
+                  f"- Built from {e['SHA']}: `make release-apk` at this tag gives the unsigned APK, SHA-256 "
+                  f"`{e['UNSIGNED']}`, which was then signed.\n\n"
+                  "release.json holds these facts for unfret.net/android. What changed: CHANGELOG.md."
+              ),
+          }))
+          PY
+          )"
+            id="$(curl -fsS -X POST -H "$auth" -H "Content-Type: application/json" -d "$body" "$API/releases" | field id)"
+            echo "created release $TAG"
+          fi
+          curl -fsS -H "$auth" "$API/releases/$id/assets" > assets.json
+          url_of() { python3 -I -c '
+          import json, sys
+          print(next((a["browser_download_url"] for a in json.load(open("assets.json")) if a["name"] == sys.argv[1]), ""))' "$1"; }
+          existing="$(url_of "$apk")"
+          if [[ -n "$existing" ]]; then
+            # A published APK is never replaced: the same file again is fine, a different one is a mistake.
+            curl -fsSL -H "$auth" -o attached.apk "$existing"
+            [[ "$(sha256sum < attached.apk)" == "$(sha256sum < "dist/release/$apk")" ]] \
+              || { echo "::error::$TAG already has a different $apk: bump the version for a new build"; exit 1; }
+            echo "$apk is already attached (the same file)"
+          fi
+          for name in "$apk" SHA256SUMS release.json; do
+            if [[ -n "$(url_of "$name")" ]]; then
+              echo "$name is already attached"
+              continue
+            fi
+            curl -fsS -o /dev/null -X POST -H "$auth" -F "attachment=@dist/release/$name" \
+              "$API/releases/$id/assets?name=$name"
+            echo "attached $name"
+          done
+          echo "::notice::Unfret for Android $VERSION is attached to $SERVER/$REPO/releases/tag/$TAG. Next: in" \
+            "unfret_backend, make android-release TAG=$TAG and open a pull request (docs/RELEASING.md)."

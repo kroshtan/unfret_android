@@ -52,9 +52,11 @@ see [Building](#building)) and turn on the app's dev-server switch.
 
 - **Nothing is read until you tap Check this page.** Loading a page sends nothing to Unfret.
 - **The page is read on your phone**, by the same code as the Unfret browser extension
-  ([extractor/](extractor/README.md)): product facts and the visible text, from a copy of the page. Account menus,
-  greetings, forms and their fields, checkout, billing and delivery areas, and any address that isn't the
-  business's own are removed first. On a private seller's ad the seller's name is never read.
+  ([extractor/](extractor/README.md)): product facts and the visible text, from a copy of the page, and, to recognise
+  a shop's apps, the names in the page's code (class names, ids, data attribute names; never what they hold) and the
+  other sites it refers to (a link's site and path, never what follows a `?`). Account menus, greetings, forms and
+  their fields, checkout, billing and delivery areas, and any address that isn't the business's own are removed
+  first. On a private seller's ad the seller's name is never read.
 - **Sent, only to unfret.net:** the page address, those facts and that text, and your Unfret pass. No device details
   (the app identifies itself as `Unfret-Android/<version>`, not your phone's model), no location, no contacts.
 - **Kept on the phone:** your key (encrypted with a key in the Android Keystore), whether you accepted the intro,
@@ -104,6 +106,7 @@ wrapper (9.9.1, checksum-verified).
 
 ```bash
 make apk        # debug APK at dist/unfret-<version>-debug.apk
+make release-apk  # the release APK, unsigned, at dist/unfret-<version>-unsigned.apk (what the release signs)
 make test       # JVM unit tests, and the bundled extractor over the extension's fixture pages
 make lint       # Android lint (warnings are errors) and the bundle-matches-its-commit check
 make check      # all of the above, as CI runs it
@@ -115,6 +118,22 @@ installing from that source).
 
 CI (`.forgejo/workflows/ci.yaml`, runner `kroshtan-public`) runs the same checks in the same images. Releases and
 signing: [docs/RELEASING.md](docs/RELEASING.md).
+
+### Release builds
+
+Release APKs are built and signed only by the manual **Release APK** workflow (`.forgejo/workflows/release-apk.yaml`):
+built unsigned in the same pinned image (`make release-apk` gives the same bytes), signed with apksigner (v2 and v3)
+with Unfret's release key from repo secrets, verified, and attached with `SHA256SUMS` to the Forgejo release
+`v<version>`; [unfret.net/android](https://unfret.net/android) offers the download. Every release is signed with the
+same key; its certificate's SHA-256 fingerprint is
+
+```
+3E:71:EF:6B:76:FA:BA:49:41:97:22:AE:99:8A:42:4B:38:A7:E9:05:C6:A4:48:4A:37:F8:A9:6F:E4:5F:66:34
+```
+
+Check a download with `apksigner verify --print-certs unfret-<version>.apk` (it prints that digest in lower case,
+without colons) and `sha256sum` against the release's `SHA256SUMS`. A debug build is signed with another key, so
+uninstall it before installing a release.
 
 ### Pull requests and CI
 
