@@ -145,4 +145,33 @@ class ResultsTest {
         assertNull(apiImage("https://cheap.shop/photo.jpg", base))
         assertNull(apiImage(null, base))
     }
+
+    @Test
+    fun `a quick result shows the server's suggestion of a deep check, and nothing without one`() {
+        fun quick(deepCheck: String, tier: String = "quick") = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 45, "explanation": "x", "tier": "$tier", "verdict": {"band": "concerns",
+                "label": "Worth a look", "headline": "x", "reasons": [], "deep_check": $deepCheck}}""",
+            ),
+        )
+        val offer = """{"suggested": true, "reason": "on_the_fence", "quiet": false,
+            "adds": [{"key": "shop_age", "area": "who", "label": "how old this shop is"}],
+            "text": "A deep check also looks at how old this shop is.",
+            "cost": "Deep checks come in packs, from ${'$'}6 for 25.", "action": "get_checks", "action_label": "Get checks"}"""
+        val hint = quick(offer).deepHint!!
+        assertEquals("A deep check also looks at how old this shop is.", hint.text)
+        assertEquals("Deep checks come in packs, from \$6 for 25.", hint.cost)
+        assertFalse(hint.runDeep)
+        assertEquals("Get checks", hint.actionLabel)
+        assertFalse(hint.quiet)
+
+        val run = quick(offer.replace("\"get_checks\"", "\"run_deep\"").replace("\"Get checks\"", "null")
+            .replace("\"quiet\": false", "\"quiet\": true")).deepHint!!
+        assertTrue(run.runDeep && run.quiet)
+        assertEquals("Run a deep check", run.actionLabel)
+
+        assertNull(quick("""{"suggested": false, "reason": "serious_concerns", "text": ""}""").deepHint)
+        assertNull(quick(offer, tier = "deep").deepHint)
+        assertNull(quick("null").deepHint) // an older server
+    }
 }

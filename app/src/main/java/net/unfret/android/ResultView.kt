@@ -23,6 +23,9 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
     var onReport: () -> Unit = {}
     var onObject: () -> Unit = {}
 
+    /** The button under a quick result's suggestion: true runs a deep check of the same page, false gets checks. */
+    var onDeepHint: (runDeep: Boolean) -> Unit = {}
+
     /** The API in use: photos are loaded only from its own thumbnail proxy. */
     var base: String = UnfretApi.PRODUCTION
 
@@ -117,6 +120,22 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
             )
             for (item in checklist) addCheck(item)
         }
+        result.deepHint?.let(::addDeepHint)
+    }
+
+    /** Once, under the quick result: what a deep check would add here, what it costs, one button. */
+    private fun addDeepHint(hint: DeepCheck) {
+        val view = inflater.inflate(R.layout.item_deep_hint, sections, false)
+        val text = view.findViewById<TextView>(R.id.deep_hint_text)
+        text.text = hint.text
+        if (hint.quiet) text.setTextColor(ContextCompat.getColor(context, R.color.muted))
+        val cost = view.findViewById<TextView>(R.id.deep_hint_cost)
+        cost.text = hint.cost
+        cost.visibility = if (hint.cost.isEmpty()) View.GONE else View.VISIBLE
+        val button = view.findViewById<MaterialButton>(R.id.deep_hint_action)
+        button.text = hint.actionLabel
+        button.setOnClickListener { onDeepHint(hint.runDeep) }
+        sections.addView(view)
     }
 
     private fun addSameProduct(same: SameProduct) {
