@@ -23,12 +23,17 @@ interface StringStore {
  * The user's Unfret API key, the only secret the app keeps: encrypted by [box] and stored in [store]. Only the
  * ciphertext is ever written. When it can't be decrypted any more (the Keystore key was lost, for example after a
  * restore onto another phone), it is forgotten and the user pastes the key again.
+ *
+ * When the server stops knowing the stored key (401: Unfret retired its old passes, or the key was replaced with its
+ * backup code), [rejected] forgets it and leaves a one-time note, so the home screen can say so once
+ * ([takeEndedNotice]). The note is a yes, nothing else; pasting a new pass clears it.
  */
 class KeyVault(private val store: StringStore, private val box: SecretBox) {
     fun save(key: String) {
         val normalized = requireNotNull(ApiKeys.normalize(key)) { "not an Unfret API key" }
         val sealed = box.seal(normalized.toByteArray(Charsets.UTF_8))
         store.put(ENTRY, Base64.getEncoder().encodeToString(sealed))
+        store.remove(ENDED)
     }
 
     fun load(): String? {
@@ -47,7 +52,27 @@ class KeyVault(private val store: StringStore, private val box: SecretBox) {
 
     fun clear() = store.remove(ENTRY)
 
+    /**
+     * The server rejected [key] (401). If it is still the stored one, forget it and note that it ended.
+     *
+     * @return Whether it was the stored key (a pass changed in the meantime is left alone).
+     */
+    fun rejected(key: String): Boolean {
+        if (load() != key) return false
+        store.remove(ENTRY)
+        store.put(ENDED, "1")
+        return true
+    }
+
+    /** Whether a stored pass ended since the home screen last said so; reading it clears the note. */
+    fun takeEndedNotice(): Boolean {
+        val ended = store.get(ENDED) != null
+        if (ended) store.remove(ENDED)
+        return ended
+    }
+
     private companion object {
         const val ENTRY = "api_key_sealed"
+        const val ENDED = "pass_ended"
     }
 }

@@ -25,6 +25,9 @@ class MainActivity : AppCompatActivity() {
     private val background: ExecutorService = Executors.newSingleThreadExecutor()
     private var key: String? = null
 
+    /** The stored pass ended (the server no longer knows it): said once, on this screen, until a pass is set. */
+    private var passEnded = false
+
     /** Bumped whenever the key or server changes, so a slow answer about the old one is dropped. */
     private var generation = 0
 
@@ -37,6 +40,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var keyStatus: TextView
     private lateinit var setKey: MaterialButton
     private lateinit var removeKey: MaterialButton
+    private lateinit var endedNotice: View
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -54,6 +58,8 @@ class MainActivity : AppCompatActivity() {
         keyStatus = findViewById(R.id.key_status)
         setKey = findViewById(R.id.set_key)
         removeKey = findViewById(R.id.remove_key)
+        endedNotice = findViewById(R.id.pass_ended)
+        passEnded = savedInstanceState?.getBoolean(STATE_PASS_ENDED) == true
         for (id in intArrayOf(R.id.intro_title, R.id.check_title, R.id.account_title)) {
             ViewCompat.setAccessibilityHeading(findViewById(id), true)
         }
@@ -77,6 +83,7 @@ class MainActivity : AppCompatActivity() {
             openInBrowser(checkoutUrl(settings.apiBase, key != null))
         }
         findViewById<MaterialButton>(R.id.have_code).setOnClickListener { openInBrowser(codeUrl(settings.apiBase)) }
+        findViewById<MaterialButton>(R.id.new_pass).setOnClickListener { openInBrowser(freePassUrl(settings.apiBase)) }
         setKey.setOnClickListener { askForKey() }
         removeKey.setOnClickListener { confirmRemoveKey() }
 
@@ -105,6 +112,11 @@ class MainActivity : AppCompatActivity() {
         refreshCredits()
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(STATE_PASS_ENDED, passEnded)
+    }
+
     override fun onDestroy() {
         background.shutdownNow()
         super.onDestroy()
@@ -123,6 +135,9 @@ class MainActivity : AppCompatActivity() {
         main.visibility = if (agreed) View.VISIBLE else View.GONE
         key = settings.vault.load()
         val current = key
+        if (settings.vault.takeEndedNotice()) passEnded = true
+        if (current != null) passEnded = false
+        endedNotice.visibility = if (passEnded) View.VISIBLE else View.GONE
         setKey.setText(if (current == null) R.string.paste_key else R.string.change_key)
         removeKey.visibility = if (current == null) View.GONE else View.VISIBLE
         keyStatus.text = if (current == null) getString(R.string.no_key) else getString(R.string.key_in_use, ApiKeys.shownId(current))
@@ -136,13 +151,25 @@ class MainActivity : AppCompatActivity() {
         val asked = ++generation
         credits.setText(R.string.credits_loading)
         background.execute {
+            var ended = false
             val text = try {
                 val c = UnfretApi(base, current, HttpUrlTransport()).credits()
                 resources.getQuantityString(R.plurals.checks_left, c.checksRemaining, c.checksRemaining)
             } catch (e: Exception) {
-                getString(Problem.of(e).message())
+                val problem = Problem.of(e)
+                ended = problem == Problem.BAD_KEY
+                getString(problem.message())
             }
-            runOnUiThread { if (!isDestroyed && asked == generation) credits.text = text }
+            runOnUiThread {
+                if (isDestroyed || asked != generation) return@runOnUiThread
+                // The stored pass ended (Unfret retired its old passes, or it was replaced): forget it, say so once.
+                if (ended && settings.vault.rejected(current)) {
+                    generation++
+                    render()
+                } else {
+                    credits.text = text
+                }
+            }
         }
     }
 
@@ -238,5 +265,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         /** A shared link that arrived before the intro was accepted or a key was set. */
         const val EXTRA_PENDING_LINK = "net.unfret.android.PENDING_LINK"
+
+        private const val STATE_PASS_ENDED = "pass_ended"
     }
 }
