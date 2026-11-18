@@ -120,6 +120,15 @@ class CheckActivity : AppCompatActivity() {
         resultView.loadImage = ::loadThumbnail
         resultView.onReport = ::askReport
         resultView.onObject = { openInBrowser("$base/objection") }
+        resultView.onDeepHint = { runDeep ->
+            // A deep check of the same page, charged as any (the app's checks are deep), or the checkout.
+            if (runDeep) {
+                showPage()
+                startCheck()
+            } else {
+                openInBrowser(checkoutUrl(base, hasKey = true))
+            }
+        }
         onBackPressedDispatcher.addCallback(
             this,
             object : OnBackPressedCallback(true) {

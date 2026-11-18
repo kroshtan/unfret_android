@@ -53,6 +53,19 @@ data class SameProduct(
     val ownImage: String?,
 )
 
+/**
+ * A quick result's suggestion of a deep check of the same page, in the server's words: what it would add here, what
+ * it costs this pass, and one button ([runDeep]: run it now; otherwise get checks first).
+ */
+data class DeepCheck(
+    val text: String,
+    val cost: String,
+    val runDeep: Boolean,
+    val actionLabel: String,
+    /** Looks fine: shown quietly. */
+    val quiet: Boolean,
+)
+
 data class Verdict(
     val band: Band,
     val label: String,
@@ -64,6 +77,8 @@ data class Verdict(
     val checksRun: Int? = null,
     val nextStep: String? = null,
     val sameProduct: SameProduct? = null,
+    /** Only when the server suggests a deep check (a quick result, a server that has the suggestion). */
+    val deepCheck: DeepCheck? = null,
 )
 
 /**
@@ -89,6 +104,8 @@ data class AnalysisResult(
     val reportToken: String? = null,
     /** The verdict exactly as the server sent it, for a report. */
     val verdictJson: JSONObject? = null,
+    /** "quick" for the rules-only quick check; "deep" or empty (an older server) otherwise. */
+    val tier: String = "",
 ) {
     /** Whether the page could be assessed at all (score -1 means it couldn't). */
     val assessed: Boolean get() = score >= 0
@@ -107,6 +124,9 @@ data class AnalysisResult(
      */
     val needsOverallReason: Boolean get() = band.let { it != null && it != Band.RELIABLE } && reasonsToShow.isEmpty()
 
+    /** The suggestion to show under the result: a quick result's, when the server makes one. */
+    val deepHint: DeepCheck? get() = verdict?.deepCheck?.takeIf { tier == "quick" && assessed }
+
     /** On a clean result (looks fine, nothing to note), how many checks found nothing worrying; null otherwise. */
     val cleanChecks: Int?
         get() = verdict?.takeIf { it.band == Band.RELIABLE && it.reasons.isEmpty() }?.checksRun?.takeIf { it > 0 }
@@ -121,6 +141,7 @@ data class AnalysisResult(
                 charged = if (json.has("charged") && !json.isNull("charged")) json.optBoolean("charged") else null,
                 reportToken = json.optString("report_token").takeIf { it.isNotEmpty() && !json.isNull("report_token") },
                 verdictJson = json.optJSONObject("verdict"),
+                tier = text(json, "tier"),
             )
         }
 
@@ -170,6 +191,7 @@ data class AnalysisResult(
                 },
                 checksRun = if (json.has("checks_run") && !json.isNull("checks_run")) json.optInt("checks_run") else null,
                 nextStep = json.optJSONObject("next_step")?.let { text(it, "text") }?.takeIf { it.isNotEmpty() },
+                deepCheck = json.optJSONObject("deep_check")?.let(::parseDeepCheck),
                 sameProduct = json.optJSONObject("same_product")?.let { sp ->
                     val image = text(sp, "image")
                     if (image.isEmpty()) {
@@ -184,6 +206,20 @@ data class AnalysisResult(
                         )
                     }
                 },
+            )
+        }
+
+        /** The suggestion, only when it is one (`suggested`, with its words). */
+        private fun parseDeepCheck(json: JSONObject): DeepCheck? {
+            val words = text(json, "text")
+            if (!json.optBoolean("suggested") || words.isEmpty()) return null
+            val runDeep = text(json, "action") == "run_deep"
+            return DeepCheck(
+                text = words,
+                cost = text(json, "cost"),
+                runDeep = runDeep,
+                actionLabel = text(json, "action_label").ifEmpty { if (runDeep) "Run a deep check" else "Get checks" },
+                quiet = json.optBoolean("quiet"),
             )
         }
 
