@@ -17,6 +17,9 @@ name: Release APK
 # `dry_run` (on by default) builds, signs and verifies everything and prints the facts; it attaches nothing and
 # creates no tag or release.
 #
+# A versionName with a pre-release suffix (0.1.0-beta.1, tag v0.1.0-beta.1) is a beta: its Forgejo release is marked
+# as a pre-release and its release.json says "prerelease": true, which unfret.net/android shows as "Beta".
+#
 # Repo secrets (docs/RELEASING.md): ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and
 # ANDROID_KEY_PASSWORD. They reach only the signing step, on the deploy runner (never the public one). While any is
 # missing the run builds and checks the unsigned APK, says signing isn't set up, and passes.
@@ -24,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "main (release main's newest commit) or an existing release tag such as v0.1.0"
+        description: "main (release main's newest commit) or an existing release tag such as v0.1.0 or v0.1.0-beta.1"
         required: true
         default: main
         type: string
@@ -76,21 +79,24 @@ jobs:
             fi
           }
           read_version() { sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts; }
+          # major.minor.patch, or a beta with a pre-release suffix (-beta.1); the same pattern as
+          # scripts/sign-release.sh and unfret_backend's unfret.android_release.
+          release_tag='^v[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(-[0-9A-Za-z]{1,16}(\.[0-9A-Za-z]{1,16}){0,3})?$'
           if [[ "$REF" == main ]]; then
             sha="$(git rev-parse origin/main)"
             git checkout -q "$sha"
             version="$(read_version)"
             tag="v$version"
-            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-              || { echo "::error::versionName '$version' is not a release version"; exit 1; }
+            [[ "$tag" =~ $release_tag ]] \
+              || { echo "::error::versionName '$version' is not a release version (0.1.0, 0.1.0-beta.1)"; exit 1; }
             if git rev-parse -q --verify "refs/tags/$tag" > /dev/null; then
               [[ "$(git rev-parse "$tag^{commit}")" == "$sha" ]] \
                 || fail "$tag already names another commit: bump versionCode and versionName first"
             fi
           else
             tag="$REF"
-            [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] \
-              || { echo "::error::'$tag' is not main or a release tag like v0.1.0"; exit 1; }
+            [[ "$tag" =~ $release_tag ]] \
+              || { echo "::error::'$tag' is not main or a release tag like v0.1.0 or v0.1.0-beta.1"; exit 1; }
             git rev-parse -q --verify "refs/tags/$tag" > /dev/null \
               || { echo "::error::tag $tag does not exist"; exit 1; }
             sha="$(git rev-parse "$tag^{commit}")"
@@ -100,10 +106,12 @@ jobs:
           fi
           git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$tag ($sha) is not on main"; exit 1; }
           version_code="$(sed -n 's/^ *versionCode = \([0-9]*\)$/\1/p' app/build.gradle.kts)"
-          # CI passed for this commit, and versionCode goes up from the latest release's (Android refuses to install a
-          # lower one over a higher). The repository is public: its statuses and releases need no token.
+          prerelease="$([[ "$version" == *-* ]] && echo true || echo false)"
+          # CI passed for this commit, and versionCode goes up from every earlier release's, betas included (Android
+          # refuses to install a lower one over a higher). The repository is public: its statuses and releases need
+          # no token.
           problems="$(SHA="$sha" TAG="$tag" CODE="$version_code" python3 -I - <<'PY'
-          import json, os, urllib.error, urllib.request
+          import json, os, urllib.request
 
           env = os.environ
 
@@ -117,18 +125,22 @@ jobs:
           for context in ("CI / extractor (push)", "CI / android (push)"):
               if state.get(context) != "success":
                   problems.append(f"{context}={state.get(context, 'missing')}")
-          try:
-              latest = get(f"{env['API']}/releases/latest")
-          except urllib.error.HTTPError as error:
-              if error.code != 404:
-                  raise
-              latest = None
-          if latest and latest["tag_name"] != env["TAG"]:
-              facts = next((a for a in latest.get("assets", []) if a["name"] == "release.json"), None)
-              if facts:
-                  code = get(facts["browser_download_url"])["version_code"]
-                  if int(env["CODE"]) <= code:
-                      problems.append(f"versionCode {env['CODE']} is not above {latest['tag_name']}'s {code}")
+          # Every release, not /releases/latest: that one leaves pre-releases (betas) out, and a beta installs like
+          # any other version.
+          codes = {}
+          page = 1
+          while releases := get(f"{env['API']}/releases?limit=50&page={page}"):
+              for release in releases:
+                  if release["tag_name"] == env["TAG"] or release.get("draft"):
+                      continue
+                  facts = next((a for a in release.get("assets", []) if a["name"] == "release.json"), None)
+                  if facts:
+                      codes[release["tag_name"]] = get(facts["browser_download_url"])["version_code"]
+              page += 1
+          if codes:
+              highest = max(codes, key=codes.__getitem__)
+              if int(env["CODE"]) <= codes[highest]:
+                  problems.append(f"versionCode {env['CODE']} is not above {highest}'s {codes[highest]}")
           print("; ".join(problems))
           PY
           )"
@@ -146,10 +158,11 @@ jobs:
             echo "sha=$sha"
             echo "tag=$tag"
             echo "version=$version"
+            echo "prerelease=$prerelease"
             echo "dry_run=$dry"
             echo "signing=$signing"
           } >> "$FORGEJO_OUTPUT"
-          echo "Releasing $tag ($sha; dry run: $dry; signing: $signing)"
+          echo "Releasing $tag ($sha; beta: $prerelease; dry run: $dry; signing: $signing)"
       - name: Build the release APK (unsigned)
         run: |
           set -euo pipefail
@@ -170,6 +183,7 @@ jobs:
           TAG: ${{ steps.release.outputs.tag }}
           SHA: ${{ steps.release.outputs.sha }}
           VERSION: ${{ steps.release.outputs.version }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
           TOKEN: ${{ forgejo.token }}
           API: ${{ forgejo.server_url }}/api/v1/repos/${{ forgejo.repository }}
           SERVER: ${{ forgejo.server_url }}
@@ -183,6 +197,10 @@ jobs:
           code="$(curl -sS -o release.json.api -w '%{http_code}' -H "$auth" "$API/releases/tags/$TAG")"
           if [[ "$code" == 200 ]]; then
             id="$(field id < release.json.api)"
+            # The forge and release.json must agree on whether this is a beta.
+            marked="$(field prerelease < release.json.api)"
+            [[ "$marked" == "$([[ "$PRERELEASE" == true ]] && echo True || echo False)" ]] \
+              || { echo "::error::release $TAG is prerelease=$marked, not $PRERELEASE: fix it on the forge"; exit 1; }
           elif [[ "$code" != 404 ]]; then
             echo "::error::looking up release $TAG: HTTP $code"
             exit 1
@@ -194,12 +212,16 @@ jobs:
 
           e = os.environ
           v = e["VERSION"]
+          beta = e["PRERELEASE"] == "true"
           print(json.dumps({
               "tag_name": e["TAG"],
               "target_commitish": e["SHA"],
               "name": f"Unfret for Android {v}",
+              # A beta (a pre-release suffix such as -beta.1) is a Forgejo pre-release; release.json says so too.
+              "prerelease": beta,
               "body": (
-                  f"The signed APK of Unfret for Android {v}, for a direct install: https://unfret.net/android\n\n"
+                  ("A beta: an early version, things may still change.\n\n" if beta else "")
+                  + f"The signed APK of Unfret for Android {v}, for a direct install: https://unfret.net/android\n\n"
                   f"- `unfret-{v}.apk` SHA-256: `{e['DIGEST']}` (also in SHA256SUMS)\n"
                   f"- Signing certificate SHA-256: `{e['CERT']}` (`apksigner verify --print-certs`)\n"
                   f"- Built from {e['SHA']}: `make release-apk` at this tag gives the unsigned APK, SHA-256 "

@@ -254,9 +254,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showAbout() {
+        var version = getString(R.string.version, BuildConfig.VERSION_NAME)
+        if (isBeta(BuildConfig.VERSION_NAME)) version += "\n\n" + getString(R.string.beta_note)
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.intro_title)
-            .setMessage(getString(R.string.intro_body) + "\n\n" + getString(R.string.version, BuildConfig.VERSION_NAME))
+            .setMessage(getString(R.string.intro_body) + "\n\n" + version)
             .setPositiveButton(R.string.done, null)
             .setNeutralButton(R.string.privacy_policy) { _, _ -> openInBrowser("${settings.apiBase}/privacy") }
             .show()

@@ -51,6 +51,7 @@
 
     <string name="dev_server">Use the dev server (dev.unfret.net, test network)</string>
     <string name="version">Version %1$s</string>
+    <string name="beta_note">This is a beta, an early version: things may still change. Tell us what doesn\'t work at hello@unfret.net.</string>
     <string name="no_browser">No browser found to open %1$s.</string>
 
     <!-- Checking a page -->
