@@ -12,11 +12,15 @@ The first version: debug builds only.
 - **Wrong result?** under a result reports it (`POST /v1/reports`) after you choose what the page really is, with
   the same consent text as the extension; **Your shop? Object to this result** opens `unfret.net/objection` in the
   browser. The privacy statement says what a report sends and where the photos come from.
+- **The page facts a quick check needs** (the extension's quick-check parity, extension #53 and backend #235): the
+  bundled extractor sends `markup_names` (the page's class names, ids and data attribute names, never what they hold)
+  and `external_refs` (the other sites the page refers to, never a query string; none on a private seller's ad), so
+  a quick check from the phone finds the same app and supplier traces as the server does in a page's HTML.
 - In Android's share sheet as "Check with Unfret" (a link, or text with a link in it), and openable from the
   launcher with a field to paste a link.
 - The page opens in a visible WebView over the phone's own connection (HTTPS only; plain `http://` links are opened
   as `https://`). "Check this page" runs the browser extension's extractor and sanitiser (bundled from
-  `unfret_extension@d225b28`, see `extractor/`) and sends the page facts and cleaned text to
+  `unfret_extension@4068384`, see `extractor/`) and sends the page facts and cleaned text to
   `POST /v1/analyze/stream` with the user's API key, exactly as the extension does; steps are counted while it runs.
 - The result screen: the band with its symbol and label, the headline, what stood out and the good signs (good signs
   first, and at most one reason, for a reliable page), "No check was used" when none was; light and dark theme in
