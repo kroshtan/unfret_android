@@ -16,6 +16,14 @@ The first version, released as a **beta**.
   you can do" (one next step), "What we checked" (ticked, marked, or not checked and why; "What we checked · 11
   checks"), and on a clean result "Nothing worrying in 14 checks." The sections are named as on the website ("What
   we noticed", "What looks good"). Results without these fields look as before.
+- **The result card says more, as the website and the extension do** (backend #261, extension #61): when part of
+  the check didn't finish (the AI read of the page), a line under the band says so ("Part of this check didn't finish
+  (the AI read of the page), so this answer may be milder than it should be. It still counted as a check. Checking
+  again after an hour may help."); "What we checked" adds up ("What we checked: 16 checks in 5 areas", each area with
+  its count, "Who's behind the shop · 4 checks"; a clean area is read out as "nothing to note"); and what the check
+  cost is a sentence, the server's `charge_note` ("This check used one of your free checks; 4 are left."; "You
+  checked this page recently, so no new check was used." under the band). With an older server, the same words
+  without the count.
 - **Wrong result?** under a result reports it (`POST /v1/reports`) after you choose what the page really is, with
   the same consent text as the extension; **Your shop? Object to this result** opens `unfret.net/objection` in the
   browser. The privacy statement says what a report sends and where the photos come from.

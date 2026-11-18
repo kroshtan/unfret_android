@@ -41,7 +41,13 @@ data class Positive(val title: String, val detail: String, val source: String = 
 /** A line of the result card's "What we checked". */
 enum class CheckStatus { CHECKED, CONCERN, NOT_CHECKED }
 
-data class CheckItem(val label: String, val status: CheckStatus, val note: String)
+data class CheckItem(
+    val label: String,
+    val status: CheckStatus,
+    val note: String,
+    /** How many of the verdict's checks looked at this area (they add up to checksRun); null from an older server. */
+    val checks: Int? = null,
+)
 
 /** The same product photo on another shop (Unfret's image index): shown first, with both photos. */
 data class SameProduct(
@@ -79,7 +85,23 @@ data class Verdict(
     val sameProduct: SameProduct? = null,
     /** Only when the server suggests a deep check (a quick result, a server that has the suggestion). */
     val deepCheck: DeepCheck? = null,
-)
+    /** Part of the check didn't finish (the assessment is degraded): the server's line, shown under the headline. */
+    val incomplete: String? = null,
+) {
+    /**
+     * For "What we checked: 16 checks in 5 areas": the areas with a check, when every area says how many (their counts
+     * add up to [checksRun]); null for an older server's result, which keeps "What we checked · 16 checks".
+     */
+    val checkedAreas: Int?
+        get() = if ((checksRun ?: 0) > 0 && checklist.isNotEmpty() && checklist.all { it.checks != null }) {
+            checklist.count { (it.checks ?: 0) > 0 }
+        } else {
+            null
+        }
+}
+
+/** What a check cost, when the server didn't say it in words (an older server): the same sentences, without a count. */
+enum class Charge { QUICK, NOT_ASSESSED, REPEAT, FREE, BOUGHT }
 
 /**
  * A photo URL the app may load: only the API's own thumbnail proxy (`<base>/v1/images/…`), so the phone never
@@ -106,7 +128,25 @@ data class AnalysisResult(
     val verdictJson: JSONObject? = null,
     /** "quick" for the rules-only quick check; "deep" or empty (an older server) otherwise. */
     val tier: String = "",
+    /** True when one of the pass's free checks paid for it. */
+    val freeCheck: Boolean? = null,
+    /** What the check cost, as the server says it ("This check used one of your free checks; 4 are left."). */
+    val chargeNote: String? = null,
 ) {
+    /** What the check cost, for a result without [chargeNote]; null when nothing can be said. */
+    val charge: Charge?
+        get() = when {
+            tier == "quick" -> Charge.QUICK
+            !assessed -> Charge.NOT_ASSESSED
+            charged == false -> Charge.REPEAT
+            freeCheck == true -> Charge.FREE
+            charged == true -> Charge.BOUGHT
+            else -> null
+        }
+
+    /** Whether the charge line is good news (no check used), shown right under the headline; otherwise at the end. */
+    val chargeFree: Boolean get() = charge.let { it == Charge.QUICK || it == Charge.NOT_ASSESSED || it == Charge.REPEAT }
+
     /** Whether the page could be assessed at all (score -1 means it couldn't). */
     val assessed: Boolean get() = score >= 0
 
@@ -142,6 +182,8 @@ data class AnalysisResult(
                 reportToken = json.optString("report_token").takeIf { it.isNotEmpty() && !json.isNull("report_token") },
                 verdictJson = json.optJSONObject("verdict"),
                 tier = text(json, "tier"),
+                freeCheck = if (json.has("free_check") && !json.isNull("free_check")) json.optBoolean("free_check") else null,
+                chargeNote = text(json, "charge_note").takeIf { it.isNotEmpty() },
             )
         }
 
@@ -186,12 +228,14 @@ data class AnalysisResult(
                                 else -> CheckStatus.CHECKED
                             },
                             text(c, "note"),
+                            checks = if (c.has("checks") && !c.isNull("checks")) c.optInt("checks") else null,
                         )
                     }
                 },
                 checksRun = if (json.has("checks_run") && !json.isNull("checks_run")) json.optInt("checks_run") else null,
                 nextStep = json.optJSONObject("next_step")?.let { text(it, "text") }?.takeIf { it.isNotEmpty() },
                 deepCheck = json.optJSONObject("deep_check")?.let(::parseDeepCheck),
+                incomplete = json.optJSONObject("incomplete")?.let { text(it, "text") }?.takeIf { it.isNotEmpty() },
                 sameProduct = json.optJSONObject("same_product")?.let { sp ->
                     val image = text(sp, "image")
                     if (image.isEmpty()) {
