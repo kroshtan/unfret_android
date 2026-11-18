@@ -46,6 +46,9 @@ const PARITY = [
   "service-site-nl",
   "p2p-marktplaats-iphone",
   "p2p-ebay-camera",
+  // The test shop: its review importer's, dropshipping app's and pop-up's traces are in the markup.
+  "test-shop",
+  "test-shop-sister",
 ];
 
 describe("the bundled extractor", () => {
@@ -74,6 +77,16 @@ describe("the bundled extractor", () => {
       assert.doesNotMatch(text, PERSONAL);
     });
   }
+
+  it("reads the markup's names and the other sites, never values or queries", async () => {
+    const { facts } = await run("test-shop", { live: true, timerWaitMs: 10 });
+    assert.ok(facts.markup_names.length > 0 && facts.external_refs.length > 0);
+    for (const name of facts.markup_names) assert.match(name, /^[A-Za-z_-][\w-]*$/u);
+    for (const ref of facts.external_refs) assert.doesNotMatch(ref, /[?#=]/u);
+    // A private seller's ad: no other sites at all.
+    const ad = await run("p2p-marktplaats-iphone", { live: true, timerWaitMs: 10 });
+    assert.deepEqual(ad.facts.external_refs, []);
+  });
 
   it("runs live, as the app does, and reads the page address from the page", async () => {
     const { facts, text } = await run("shopify-glow", { live: true, timerWaitMs: 10 });

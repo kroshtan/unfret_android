@@ -1,6 +1,6 @@
 # Unfret privacy policy (Android app)
 
-_Last updated: 17 November 2026 (version 0.1.0: "Unfret pass" wording, free checks, contact hello@unfret.net). Draft for the store listing; to be reviewed before publication._
+_Last updated: 18 November 2026 (version 0.1.0: "Unfret pass" wording, free checks, contact hello@unfret.net; the names in the page's code and the other sites it refers to). Draft for the store listing; to be reviewed before publication._
 
 Unfret is made by Kroshtan (Floris van Beers, the Netherlands). The app works like the Unfret browser extension
 and follows the same rules; the extension's policy is in its repository, the server's at <https://unfret.net/privacy>.
@@ -15,13 +15,16 @@ When you tap **Check this page**, the app reads the page shown, on your phone: p
 price, ratings, review texts and dates, shop policies, hidden text, checkboxes, countdowns), what the shop or
 company publishes about itself (its phone numbers, e-mail addresses and address from its contact, legal or imprint
 section, footer or structured data; registration and licence numbers; payment methods it mentions) and the visible
-product text. On a service company's own site it also reads the testimonials the company publishes; on a provider's
-profile on a platform, the platform's figures and its reviews, without the reviewers' names. On a private seller's
-ad it reads the ad's text, the item details and what the platform shows about the seller's account. **The seller's
-name is never read.**
+product text. To recognise the apps a shop runs (dropshipping, review-import and countdown apps), it also reads the
+names in the page's code (class names, ids and data attribute names, never what they hold) and which other sites the
+page refers to (the site, and for a link also its path, never what follows a `?`). On a service company's own site
+it also reads the testimonials the company publishes; on a provider's profile on a platform, the platform's figures
+and its reviews, without the reviewers' names. On a private seller's ad it reads the ad's text, the item details and
+what the platform shows about the seller's account. **The seller's name is never read.**
 
 Before anything leaves your phone, account menus, greetings, forms and input fields, checkout, billing and delivery
-areas, and any address that isn't in the business's own contact section are removed from a copy of the page. These
+areas, and any address that isn't in the business's own contact section are removed from a copy of the page; inside
+those areas not even the names in the code are read, and on a private seller's ad no other sites are. These
 rules keep your own name, address, e-mail address and phone number on your phone; when in doubt, the app strips.
 The page itself is not changed. The code that does this is the browser extension's own.
 

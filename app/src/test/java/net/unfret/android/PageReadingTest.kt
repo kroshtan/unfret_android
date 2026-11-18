@@ -38,7 +38,7 @@ class PageReadingTest {
 
     @Test
     fun `the request is the extension's`() {
-        val facts = JSONObject("""{"platform":"generic","url":"https://shop.test/p?v=1","title":"Lamp","price":19.99,"rating":4.5,"review_count":12,"reviews":[],"seller_profile":null}""")
+        val facts = JSONObject("""{"platform":"generic","url":"https://shop.test/p?v=1","title":"Lamp","price":19.99,"rating":4.5,"review_count":12,"reviews":[],"seller_profile":null,"markup_names":["jdgm-widget","data-dsers-product"],"external_refs":["cdn.jdgm.io","supplier.test/p/1"]}""")
         val body = AnalyzeRequest.fromExtraction(JSONObject().put("facts", facts).put("text", "Glow lamp\nIn stock"))
 
         assertEquals(setOf("url", "page_facts", "page_content"), body.keys().asSequence().toSet())
@@ -49,6 +49,9 @@ class PageReadingTest {
         assertEquals(facts.toString(), sent.toString())
         assertEquals(19.99, sent.getDouble("price"), 0.0)
         assertTrue(sent.isNull("seller_profile"))
+        // The markup's app traces (the extension's markup_names and external_refs) go along like the rest.
+        assertEquals("data-dsers-product", sent.getJSONArray("markup_names").getString(1))
+        assertEquals("supplier.test/p/1", sent.getJSONArray("external_refs").getString(1))
     }
 
     @Test

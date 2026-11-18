@@ -20,7 +20,11 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // No signing config: release signing is set up by the owner (docs/RELEASING.md).
+            // No commit in the APK: it would differ between a checkout with git and one without, and the build must
+            // be the same byte for byte wherever it runs. The release names its commit.
+            vcsInfo.include = false
+            // No signing config: Gradle builds the release unsigned, and scripts/sign-release.sh signs it with
+            // apksigner (docs/RELEASING.md), so the key never reaches Gradle.
         }
     }
 
