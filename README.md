@@ -113,7 +113,7 @@ make check      # all of the above, as CI runs it
 make extractor  # rebuild the page reader from the extension commit in extractor/EXTENSION_COMMIT
 ```
 
-Install the debug APK with `adb install dist/unfret-0.1.0-debug.apk`, or copy it to a phone and open it (allow
+Install the debug APK with `adb install dist/unfret-0.1.0-beta.1-debug.apk`, or copy it to a phone and open it (allow
 installing from that source).
 
 CI (`.forgejo/workflows/ci.yaml`, runner `kroshtan-public`) runs the same checks in the same images. Releases and
@@ -124,8 +124,8 @@ signing: [docs/RELEASING.md](docs/RELEASING.md).
 Release APKs are built and signed only by the manual **Release APK** workflow (`.forgejo/workflows/release-apk.yaml`):
 built unsigned in the same pinned image (`make release-apk` gives the same bytes), signed with apksigner (v2 and v3)
 with Unfret's release key from repo secrets, verified, and attached with `SHA256SUMS` to the Forgejo release
-`v<version>`; [unfret.net/android](https://unfret.net/android) offers the download. Every release is signed with the
-same key; its certificate's SHA-256 fingerprint is
+`v<version>`; [unfret.net/android](https://unfret.net/android) offers the download. A version with a pre-release
+suffix, such as the first one, `0.1.0-beta.1`, is published as a beta. Every release is signed with the same key; its certificate's SHA-256 fingerprint is
 
 ```
 3E:71:EF:6B:76:FA:BA:49:41:97:22:AE:99:8A:42:4B:38:A7:E9:05:C6:A4:48:4A:37:F8:A9:6F:E4:5F:66:34

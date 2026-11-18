@@ -9,6 +9,30 @@ Two kinds of build:
   release key by `scripts/sign-release.sh` (apksigner, v2 and v3 schemes), always talking to unfret.net. It is
   attached to a Forgejo release and offered on [unfret.net/android](https://unfret.net/android).
 
+## Versions and betas
+
+`versionName` in `app/build.gradle.kts` names the release: `0.1.0` is tagged `v0.1.0`, and a version with a
+pre-release suffix, such as `0.1.0-beta.1`, is a **beta**, tagged `v0.1.0-beta.1`. The accepted pattern is
+`MAJOR.MINOR.PATCH`, optionally followed by `-` and up to four dot-separated parts of letters and digits (`-beta.1`,
+`-rc.2`), with at most three digits per number; the workflow, `scripts/sign-release.sh` and unfret_backend's
+`unfret.android_release` check the same pattern. No build metadata (`+…`).
+
+A beta is released like any other version, with two differences:
+
+- its Forgejo release is a **pre-release** (the workflow creates it so, and stops if an existing release's flag
+  disagrees);
+- its `release.json` says **`"prerelease": true`** (a stable release says `false`). unfret_backend reads this field:
+  it must agree with the version (a suffix means `true`), and `/android` then shows a "Beta" label next to the version
+  and one sentence: an early version, things may still change, and where to write about what doesn't work. A
+  `release.json` without the field counts as a stable release.
+
+The app's About screen adds the same sentence under the version for a beta.
+
+`versionCode` goes up with every release, betas included: a beta's APK installs over, and is updated by, the stable
+ones like any other. `0.1.0-beta.1` is the first release, so it keeps `versionCode` 1; the next build, beta or not,
+needs 2. The workflow compares against every published release, pre-releases included (Forgejo's
+`/releases/latest` leaves them out).
+
 ## The release key
 
 The release key signs every update for as long as the app exists: Android installs an update only over an app
@@ -58,15 +82,17 @@ checks the unsigned APK, says signing isn't set up, and passes.
 Actions → **Release APK** → Run workflow, with `ref` `main` (or an existing tag such as `v0.1.0`, to build it again)
 and `dry_run` on first. It:
 
-1. checks the commit is on main with CI passed, that `v<versionName>` doesn't name another commit, and that
-   `versionCode` is above the latest release's;
+1. checks the commit is on main with CI passed, that `v<versionName>` is a release version (above) and doesn't name
+   another commit, and that `versionCode` is above every published release's, betas included;
 2. builds the release APK unsigned (`assembleRelease`) in CI's pinned image;
 3. runs `scripts/sign-release.sh`: the APK is `net.unfret.android` at this version and not debuggable, asks for no
    permission beyond INTERNET and the support library's own (a new one needs its explanation on unfret.net/android
    first); zipalign, apksigner sign (v2 + v3, no v1 or v4), `apksigner verify --print-certs` (both schemes, one
    signer, the pinned certificate); writes `unfret-<version>.apk`, `SHA256SUMS` and `release.json` (version,
-   versionCode, commit, size, SHA-256, certificate, minSdk, permissions, date, and the unsigned APK's SHA-256);
-4. without `dry_run`: creates the release `v<version>` (and its tag) if needed and attaches the three files. An APK
+   versionCode, commit, size, SHA-256, certificate, minSdk, permissions, date, the unsigned APK's SHA-256, and
+   `prerelease`);
+4. without `dry_run`: creates the release `v<version>` (and its tag) if needed, as a pre-release for a beta, and
+   attaches the three files. An APK
    already attached is never replaced: the same file again is skipped, a different one stops the run.
 
 ### Reproducible
@@ -82,8 +108,10 @@ The page reads `src/unfret/static/android-release.json` in unfret_backend. After
 
 ```bash
 cd ../unfret_backend
-make android-release TAG=v0.1.0   # reads release.json from the release, downloads the APK, checks size and SHA-256
-git checkout -b android-v0.1.0 && git commit -am "Android 0.1.0 on /android"   # a pull request; deployed with the site
+make android-release TAG=v0.1.0-beta.1   # reads release.json from the release, downloads the APK, checks it
+git checkout -b android-v0.1.0-beta.1
+git add src/unfret/static/android-release.json   # new the first time, so `commit -a` alone would miss it
+git commit -m "Android 0.1.0-beta.1 on /android"   # then a pull request; deployed with the site
 ```
 
 Until that file exists the page says the download is coming soon. The download itself is the release asset on
@@ -91,7 +119,7 @@ git.kroshtan.com, over HTTPS.
 
 ## Before each release
 
-Bump `versionCode` (always up) and `versionName` in `app/build.gradle.kts`, update CHANGELOG.md, and refresh the
+Bump `versionCode` (always up, betas included) and `versionName` in `app/build.gradle.kts`, update CHANGELOG.md, and refresh the
 extractor if the extension changed (`extractor/README.md`).
 
 ## Google Play (later)

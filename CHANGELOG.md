@@ -1,9 +1,16 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0-beta.1 (unreleased)
 
-The first version: debug builds only.
+The first version, released as a **beta**.
 
+- **A beta**: `versionName` is `0.1.0-beta.1` (`versionCode` 1). The About screen says under the version that this is
+  a beta, an early version that may still change, and to write to hello@unfret.net about what doesn't work. The
+  Release APK workflow and `scripts/sign-release.sh` accept a version with a pre-release suffix (tag
+  `v0.1.0-beta.1`), publish it as a Forgejo pre-release, and write `"prerelease": true` in its `release.json`
+  (`false` for a stable release), which unfret.net/android shows as "Beta". The versionCode check compares against
+  every published release, betas included, instead of `/releases/latest`, which leaves pre-releases out
+  (docs/RELEASING.md, "Versions and betas").
 - **The result card**, as on the website and in the extension: the same product sold elsewhere first, with both
   photos (thumbnails from `unfret.net` itself), each finding with its source ("Source: Domain registry (RDAP)"), "What
   you can do" (one next step), "What we checked" (ticked, marked, or not checked and why; "What we checked · 11

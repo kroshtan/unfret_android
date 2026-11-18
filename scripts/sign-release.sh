@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Sign the unsigned release APK with Unfret's release key, check it, and write what the release publishes:
-#   <out>/unfret-<version>.apk, <out>/SHA256SUMS and <out>/release.json (the facts unfret.net/android shows).
+#   <out>/unfret-<version>.apk, <out>/SHA256SUMS and <out>/release.json (the facts unfret.net/android shows, with
+#   "prerelease": true for a beta such as 0.1.0-beta.1).
 #
 #   scripts/sign-release.sh app/build/outputs/apk/release/app-release-unsigned.apk dist/release
 #
@@ -32,7 +33,10 @@ fail() { echo "::error::$*" >&2; exit 1; }
 
 version="$(sed -n 's/^ *versionName = "\(.*\)"/\1/p' "$root/app/build.gradle.kts")"
 version_code="$(sed -n 's/^ *versionCode = \([0-9]*\)$/\1/p' "$root/app/build.gradle.kts")"
-[[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "versionName '$version' is not a release version"
+# major.minor.patch, or a beta with a pre-release suffix (0.1.0-beta.1); the same pattern as the release workflow and
+# unfret_backend's unfret.android_release.
+release_version='^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(-[0-9A-Za-z]{1,16}(\.[0-9A-Za-z]{1,16}){0,3})?$'
+[[ "$version" =~ $release_version ]] || fail "versionName '$version' is not a release version (0.1.0, 0.1.0-beta.1)"
 [[ "$version_code" =~ ^[1-9][0-9]*$ ]] || fail "versionCode '$version_code' is not a number"
 commit="${RELEASE_COMMIT:-$(git -C "$root" rev-parse HEAD)}"
 [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail "'$commit' is not a commit"
@@ -109,6 +113,8 @@ facts = {
     "published": datetime.now(timezone.utc).date().isoformat(),
     # `make release-apk` at this commit builds exactly this, before signing.
     "unsigned_sha256": env["UNSIGNED_SHA256"],
+    # A beta: a version with a pre-release suffix (0.1.0-beta.1). unfret.net/android labels it "Beta".
+    "prerelease": "-" in env["VERSION"],
 }
 with open(sys.argv[1], "w") as file:
     json.dump(facts, file, indent=2)
