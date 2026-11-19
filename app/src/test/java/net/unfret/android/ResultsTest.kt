@@ -174,4 +174,66 @@ class ResultsTest {
         assertNull(quick(offer, tier = "deep").deepHint)
         assertNull(quick("null").deepHint) // an older server
     }
+
+    @Test
+    fun `what was checked adds up, area by area`() {
+        val result = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 35, "explanation": "x", "verdict": {"band": "careful", "label": "Think twice", "headline": "x",
+                "reasons": [], "positives": [],
+                "checklist": [{"key": "who", "label": "Who's behind the shop", "status": "concern", "note": "New", "checks": 4},
+                  {"key": "reviews", "label": "Reviews", "status": "not_checked", "note": "No reviews.", "checks": 0},
+                  {"key": "tricks", "label": "Hidden tricks", "status": "checked", "note": "", "checks": 3}],
+                "checks_run": 7}}""",
+            ),
+        )
+        val verdict = result.verdict!!
+        assertEquals(listOf(4, 0, 3), verdict.checklist.map { it.checks })
+        assertEquals(verdict.checksRun, verdict.checklist.sumOf { it.checks ?: 0 })
+        assertEquals(2, verdict.checkedAreas) // "What we checked: 7 checks in 2 areas"
+        val older = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 35, "explanation": "x", "verdict": {"band": "careful", "label": "Think twice", "headline": "x",
+                "checklist": [{"key": "who", "label": "Who's behind the shop", "status": "checked", "note": ""}],
+                "checks_run": 7}}""",
+            ),
+        )
+        assertNull(older.verdict!!.checkedAreas) // "What we checked · 7 checks", as before
+    }
+
+    @Test
+    fun `a result whose AI read didn't finish says so`() {
+        val line = "Part of this check didn't finish (the AI read of the page), so this answer may be milder than it should be."
+        val partial = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 40, "explanation": "x", "verdict": {"band": "careful", "label": "Think twice", "headline": "x",
+                "incomplete": {"steps": ["content"], "text": "$line"}}}""",
+            ),
+        )
+        assertEquals(line, partial.verdict!!.incomplete)
+        val whole = AnalysisResult.parse(
+            JSONObject("""{"score": 40, "explanation": "x", "verdict": {"band": "careful", "label": "x", "headline": "x", "incomplete": null}}"""),
+        )
+        assertNull(whole.verdict!!.incomplete)
+    }
+
+    @Test
+    fun `what a check cost, in the server's words or by kind`() {
+        val free = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 40, "explanation": "x", "charged": true, "free_check": true, "tier": "deep",
+                "charge_note": "This check used one of your free checks; 4 are left."}""",
+            ),
+        )
+        assertEquals("This check used one of your free checks; 4 are left.", free.chargeNote)
+        assertEquals(Charge.FREE, free.charge)
+        assertEquals(false, free.chargeFree) // shown at the end, not as good news
+        fun kind(json: String) = AnalysisResult.parse(JSONObject(json)).charge
+        assertEquals(Charge.BOUGHT, kind("""{"score": 40, "explanation": "x", "charged": true}"""))
+        assertEquals(Charge.REPEAT, kind("""{"score": 40, "explanation": "x", "charged": false}"""))
+        assertEquals(Charge.NOT_ASSESSED, kind("""{"score": -1, "explanation": "x", "charged": false}"""))
+        assertEquals(Charge.QUICK, kind("""{"score": 40, "explanation": "x", "charged": false, "tier": "quick"}"""))
+        assertNull(kind("""{"score": 40, "explanation": "x"}"""))
+        assertNull(AnalysisResult.parse(JSONObject("""{"score": 40, "explanation": "x", "charge_note": null}""")).chargeNote)
+    }
 }

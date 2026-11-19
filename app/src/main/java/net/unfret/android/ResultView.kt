@@ -69,10 +69,26 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         }
         headline.text = verdict?.headline?.takeIf { it.isNotEmpty() } ?: result.explanation
         headline.visibility = if (headline.text.isNullOrEmpty()) View.GONE else View.VISIBLE
-        noCheck.visibility = if (result.charged == false || !result.assessed) View.VISIBLE else View.GONE
+        // What the check cost, as a sentence: right under the headline when no check was used (good news, easy to
+        // miss under the reasons); at the end when one was.
+        val charge = chargeLine(result)
+        noCheck.text = charge
+        noCheck.visibility = if (charge != null && result.chargeFree) View.VISIBLE else View.GONE
         setReportable(result.reportToken != null && result.assessed)
 
         sections.removeAllViews()
+        // Part of the check didn't finish, so the verdict may be milder than it should be: first, under the band card.
+        verdict?.incomplete?.let { line ->
+            val view = TextView(context)
+            view.text = line
+            view.setTextAppearance(R.style.TextAppearance_Unfret_Small)
+            view.setTextColor(ContextCompat.getColor(context, R.color.ink))
+            view.setBackgroundColor(ContextCompat.getColor(context, R.color.surface_2))
+            view.setPadding(dp(12), dp(8), dp(12), dp(8))
+            val params = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+            params.topMargin = dp(12)
+            sections.addView(view, params)
+        }
         val same = verdict?.sameProduct?.takeIf { apiImage(it.image, base) != null }
         if (same != null) addSameProduct(same)
         result.cleanChecks?.let { checks ->
@@ -111,17 +127,45 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         val checklist = verdict?.checklist.orEmpty()
         if (checklist.isNotEmpty()) {
             val checks = verdict?.checksRun?.takeIf { it > 0 }
+            val areas = verdict?.checkedAreas
             addHeading(
-                if (checks != null) {
-                    context.resources.getQuantityString(R.plurals.checklist_title_count, checks, checks)
-                } else {
-                    context.getString(R.string.checklist_title)
+                when {
+                    checks != null && areas != null -> context.getString(
+                        R.string.checklist_title_areas,
+                        countOf(R.plurals.checks_count, checks),
+                        countOf(R.plurals.areas_count, areas),
+                    )
+                    checks != null -> context.resources.getQuantityString(R.plurals.checklist_title_count, checks, checks)
+                    else -> context.getString(R.string.checklist_title)
                 },
             )
             for (item in checklist) addCheck(item)
         }
         result.deepHint?.let(::addDeepHint)
+        if (charge != null && !result.chargeFree) {
+            val paid = TextView(context)
+            paid.text = charge
+            paid.setTextAppearance(R.style.TextAppearance_Unfret_Small)
+            paid.setTextColor(ContextCompat.getColor(context, R.color.muted))
+            paid.setPadding(0, dp(16), 0, 0)
+            sections.addView(paid)
+        }
     }
+
+    /** What the check cost: the server's sentence (with the checks left), or the same words without the count. */
+    private fun chargeLine(result: AnalysisResult): String? = result.chargeNote ?: result.charge?.let {
+        context.getString(
+            when (it) {
+                Charge.QUICK -> R.string.charge_quick
+                Charge.NOT_ASSESSED -> R.string.charge_not_assessed
+                Charge.REPEAT -> R.string.charge_repeat
+                Charge.FREE -> R.string.charge_free
+                Charge.BOUGHT -> R.string.charge_bought
+            },
+        )
+    }
+
+    private fun countOf(plural: Int, n: Int): String = context.resources.getQuantityString(plural, n, n)
 
     /** Once, under the quick result: what a deep check would add here, what it costs, one button. */
     private fun addDeepHint(hint: DeepCheck) {
@@ -227,14 +271,16 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         mark.text = sign
         mark.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, colour))
         val labelView = view.findViewById<TextView>(R.id.check_label)
-        labelView.text = item.label
+        val count = item.checks?.takeIf { it > 0 }?.let { countOf(R.plurals.checks_count, it) }
+        labelView.text = if (count != null) context.getString(R.string.check_count, item.label, count) else item.label
         if (item.status == CheckStatus.NOT_CHECKED) labelView.setTextColor(ContextCompat.getColor(context, R.color.muted))
         val note = view.findViewById<TextView>(R.id.check_note)
         if (item.note.isNotEmpty()) {
             note.text = item.note
             note.visibility = View.VISIBLE
         }
-        view.contentDescription = listOf(item.label, context.getString(word), item.note).filter { it.isNotEmpty() }
+        view.contentDescription = listOf(labelView.text.toString(), context.getString(word), item.note)
+            .filter { it.isNotEmpty() }
             .joinToString(": ")
         view.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
         labelView.importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO

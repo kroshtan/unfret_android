@@ -105,7 +105,25 @@
         <item quantity="one">Nothing worrying in %1$d check.</item>
         <item quantity="other">Nothing worrying in %1$d checks.</item>
     </plurals>
-    <string name="check_checked">checked</string>
+    <!-- "What we checked: 16 checks in 5 areas" (the areas with a check: their counts add up to the number) -->
+    <string name="checklist_title_areas">What we checked: %1$s in %2$s</string>
+    <plurals name="checks_count">
+        <item quantity="one">%1$d check</item>
+        <item quantity="other">%1$d checks</item>
+    </plurals>
+    <plurals name="areas_count">
+        <item quantity="one">%1$d area</item>
+        <item quantity="other">%1$d areas</item>
+    </plurals>
+    <!-- After an area's name: "Who's behind the shop · 4 checks" -->
+    <string name="check_count">%1$s · %2$s</string>
+    <!-- What a check cost, for an older server that doesn't say it in words (the server's own sentence has the count) -->
+    <string name="charge_quick">Quick checks are free.</string>
+    <string name="charge_not_assessed">This page couldn\'t be assessed, so no check was used.</string>
+    <string name="charge_repeat">You checked this page recently, so no new check was used.</string>
+    <string name="charge_free">This check used one of your free checks.</string>
+    <string name="charge_bought">This check used one of your checks.</string>
+    <string name="check_checked">nothing to note</string>
     <string name="check_concern">something to note</string>
     <string name="check_not_checked">not checked</string>
     <string name="same_product_this_page">This page</string>
