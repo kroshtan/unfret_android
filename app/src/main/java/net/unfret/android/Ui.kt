@@ -35,6 +35,7 @@ fun Problem.message(): Int = when (this) {
     Problem.SERVICE_OFF -> R.string.problem_service_off
     Problem.BAD_KEY -> R.string.problem_bad_key
     Problem.NO_CHECKS -> R.string.problem_no_checks
+    Problem.FREE_PAUSED -> R.string.problem_free_paused
     Problem.FAILED -> R.string.problem_failed
     Problem.OFFLINE -> R.string.problem_offline
 }
@@ -43,6 +44,3 @@ fun Problem.message(): Int = when (this) {
 fun checkoutUrl(base: String, hasKey: Boolean): String = if (hasKey) "$base/checkout?mode=topup" else "$base/checkout"
 
 fun codeUrl(base: String): String = "$base/checkout?mode=code"
-
-/** Where a new pass with free deep checks comes from: the link checker, which gives a browser its free checks once. */
-fun freePassUrl(base: String): String = "$base/check"

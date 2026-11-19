@@ -157,4 +157,47 @@ class UnfretApiTest {
         assertNull(UnfretApi.thumbnail(url, "https://evil.example", transport))
         assertEquals(1, transport.sent.size) // nothing else was fetched
     }
+
+    @Test
+    fun `a new pass is the challenge, then the pass, with no key and nothing about the phone`() {
+        val transport = RoutedTransport(
+            mapOf(
+                "GET /v1/keys/challenge" to (200 to """{"challenge":"c.1.18.m","bits":18,"expires_at":1.0}"""),
+                "POST /v1/keys" to (201 to """{"key_id":"abcdefgh23","key":"$KEY_A","recovery_code":"ufr_x","account":"key:abcdefgh23","balance_usd_micros":0,"free_checks":5}"""),
+            ),
+        )
+
+        assertEquals(KeyChallenge("c.1.18.m", 18), UnfretApi.keyChallenge(UnfretApi.DEV, transport))
+        val issued = UnfretApi.createKey(UnfretApi.DEV, transport, "c.1.18.m", "4711", free = true)
+
+        assertEquals(KEY_A, issued.key)
+        assertEquals(5, issued.freeChecks)
+        val (get, post) = transport.sent
+        assertEquals("https://dev.unfret.net/v1/keys/challenge", get.url)
+        assertEquals("https://dev.unfret.net/v1/keys", post.url)
+        val sent = JSONObject(post.body!!)
+        assertEquals(setOf("challenge", "solution", "free"), sent.keys().asSequence().toSet())
+        assertEquals("c.1.18.m", sent.getString("challenge"))
+        assertEquals("4711", sent.getString("solution"))
+        assertTrue(sent.getBoolean("free"))
+        assertEquals(setOf("Accept-Language", "User-Agent", "Content-Type"), post.headers.keys)
+        assertEquals(setOf("Accept-Language", "User-Agent"), get.headers.keys)
+    }
+
+    @Test
+    fun `free checks in the balance`() {
+        val credits = Credits.parse(JSONObject("""{"checks_remaining":5,"free_checks_remaining":5,"free_checks_paused":false}"""))
+        assertEquals(Credits(5, null, freeLeft = 5, freePaused = false), credits)
+        assertFalse(credits.quickOnly)
+        // No checks, or only free ones while today's are used: only the quick check runs.
+        assertTrue(Credits(0, null).quickOnly)
+        assertTrue(Credits(3, null, freeLeft = 3, freePaused = true).quickOnly)
+        assertFalse(Credits(4, null, freeLeft = 3, freePaused = true).quickOnly)
+    }
+
+    @Test
+    fun `today's free checks used up is its own problem`() {
+        val paused = ApiError(429, "FREE_CHECKS_PAUSED", "Free checks are back tomorrow.")
+        assertEquals(Problem.FREE_PAUSED, Problem.of(paused))
+    }
 }

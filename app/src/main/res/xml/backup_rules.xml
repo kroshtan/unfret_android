@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 (API 30) and older: Auto Backup keeps only shared_prefs/free_checks.xml, one yes/no that this phone already
+  received its free checks (BackedUpFlag). With an <include>, nothing else is backed up: never the pass
+  (shared_prefs/unfret.xml). data_extraction_rules.xml says the same for Android 12 and later.
+-->
+<full-backup-content>
+    <include domain="sharedpref" path="free_checks.xml" />
+</full-backup-content>

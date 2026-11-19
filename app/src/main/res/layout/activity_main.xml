@@ -73,6 +73,60 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
+                <!-- The app's own pass on first launch: being made, made (with or without free checks), or not yet. -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/setup"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:visibility="gone">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:accessibilityLiveRegion="polite"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/setup_title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                            android:textColor="@color/ink" />
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/setup_progress"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:contentDescription="@string/setup_making"
+                            android:indeterminate="true"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/setup_body"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:textAppearance="@style/TextAppearance.Unfret.Body" />
+
+                        <TextView
+                            android:id="@+id/setup_note"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:textAppearance="@style/TextAppearance.Unfret.Small"
+                            android:visibility="gone" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/setup_action"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content">
@@ -162,6 +216,7 @@
                                 android:textColor="@color/ink" />
 
                             <TextView
+                                android:id="@+id/pass_ended_next"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
@@ -192,6 +247,14 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:textAppearance="@style/TextAppearance.Unfret.Small" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/make_pass"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/make_pass_free"
+                            android:visibility="gone" />
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/get_checks"
@@ -237,6 +300,14 @@
                                 android:layout_weight="1"
                                 android:text="@string/remove_key" />
                         </LinearLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/show_recovery"
+                            style="@style/Widget.Material3.Button.TextButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/show_recovery"
+                            android:visibility="gone" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 

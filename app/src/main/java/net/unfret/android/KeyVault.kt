@@ -29,11 +29,29 @@ interface StringStore {
  * ([takeEndedNotice]). The note is a yes, nothing else; pasting a new pass clears it.
  */
 class KeyVault(private val store: StringStore, private val box: SecretBox) {
-    fun save(key: String) {
+    /**
+     * Keep [key]. [recoveryCode] is the backup code of a pass the app made for itself (the server shows it only once);
+     * it is sealed the same way, and forgotten with the pass or when another pass is saved.
+     */
+    fun save(key: String, recoveryCode: String? = null) {
         val normalized = requireNotNull(ApiKeys.normalize(key)) { "not an Unfret API key" }
-        val sealed = box.seal(normalized.toByteArray(Charsets.UTF_8))
-        store.put(ENTRY, Base64.getEncoder().encodeToString(sealed))
+        store.put(ENTRY, seal(normalized))
+        if (recoveryCode != null) store.put(RECOVERY, seal(recoveryCode)) else store.remove(RECOVERY)
         store.remove(ENDED)
+    }
+
+    private fun seal(plain: String) = Base64.getEncoder().encodeToString(box.seal(plain.toByteArray(Charsets.UTF_8)))
+
+    /** The backup code of the stored pass, when the app made that pass itself (and so it is the only copy). */
+    fun recoveryCode(): String? {
+        if (load() == null) return null
+        val stored = store.get(RECOVERY) ?: return null
+        return try {
+            String(box.open(Base64.getDecoder().decode(stored)), Charsets.UTF_8)
+        } catch (_: Exception) {
+            store.remove(RECOVERY)
+            null
+        }
     }
 
     fun load(): String? {
@@ -45,12 +63,16 @@ class KeyVault(private val store: StringStore, private val box: SecretBox) {
         }
         if (key == null || ApiKeys.normalize(key) != key) {
             store.remove(ENTRY)
+            store.remove(RECOVERY)
             return null
         }
         return key
     }
 
-    fun clear() = store.remove(ENTRY)
+    fun clear() {
+        store.remove(ENTRY)
+        store.remove(RECOVERY)
+    }
 
     /**
      * The server rejected [key] (401). If it is still the stored one, forget it and note that it ended.
@@ -59,7 +81,7 @@ class KeyVault(private val store: StringStore, private val box: SecretBox) {
      */
     fun rejected(key: String): Boolean {
         if (load() != key) return false
-        store.remove(ENTRY)
+        clear()
         store.put(ENDED, "1")
         return true
     }
@@ -74,5 +96,6 @@ class KeyVault(private val store: StringStore, private val box: SecretBox) {
     private companion object {
         const val ENTRY = "api_key_sealed"
         const val ENDED = "pass_ended"
+        const val RECOVERY = "recovery_code_sealed"
     }
 }

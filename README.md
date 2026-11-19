@@ -59,19 +59,28 @@ see [Building](#building)) and turn on the app's dev-server switch.
   first. On a private seller's ad the seller's name is never read.
 - **Sent, only to unfret.net:** the page address, those facts and that text, and your Unfret pass. No device details
   (the app identifies itself as `Unfret-Android/<version>`, not your phone's model), no location, no contacts.
-- **Kept on the phone:** your key (encrypted with a key in the Android Keystore), whether you accepted the intro,
-  for a moment that your pass ended (the server no longer knows it; the home screen says so once), and nothing
-  else. The pages you open are forgotten: the WebView runs in its own process, and when you close the
-  page its cookies, storage, cache and other files are deleted and that process ends. Nothing goes into Android
-  backups.
+- **Kept on the phone:** your key (encrypted with a key in the Android Keystore; for a pass the app made itself, its
+  backup code too, encrypted the same way), whether you accepted the intro, whether the first pass was set up, for a
+  moment that your pass ended (the server no longer knows it; the home screen says so once), and nothing else. The
+  pages you open are forgotten: the WebView runs in its own process, and when you close the page its cookies,
+  storage, cache and other files are deleted and that process ends.
+- **In Android's backup:** one yes or no, that this phone already received its free checks, in your own Google
+  backup (and a transfer to a new phone), so a reinstall doesn't get them twice. Nothing else, and never the pass. No
+  device identifier is used or sent.
 
 The full statement is [PRIVACY.md](PRIVACY.md).
 
 ## Checks and your key
 
-Each check uses one check from your Unfret pass (an API key, `ufk_…`). Paste the pass once; the app shows how many checks are
-left. **Nothing is sold in the app**: "Get checks" and "Have a code?" open unfret.net's checkout in your browser,
-where checks are bought or a code is redeemed onto a pass.
+Each deep check uses one check from your Unfret pass (an API key, `ufk_…`). On the first launch, after the intro, the
+app makes its own pass, as the browser extension does on install: a proof of work (`GET /v1/keys/challenge`, solved
+on the phone), then `POST /v1/keys` with `"free": true`. It comes with 5 free deep checks, within the server's daily
+limit per network; they are used before bought checks, and once they're used up quick checks stay free. A phone that
+had its free checks before (a flag restored from its own Android backup after a reinstall) gets a pass without them
+and is told why. A pass can also be pasted, or handed over by the "Use on your phone" QR code on unfret.net
+(`https://unfret.net/pass#pass=…`, an Android App Link: the app asks before using it). **Nothing is sold in the
+app**: "Get checks" and "Have a code?" open unfret.net's checkout in your browser, where checks are bought or a code
+is redeemed onto a pass. Testing the backup and the link by hand: [docs/TESTING-BY-HAND.md](docs/TESTING-BY-HAND.md).
 
 ## How it works
 
@@ -86,14 +95,17 @@ share sheet / pasted link ─► CheckActivity (process :check)
 - `app/src/main/java/net/unfret/android/`: `CheckActivity` (WebView and check), `MainActivity` (intro, link field,
   key and checks), `ResultView` (the verdict), `UnfretApi` + `HttpUrlTransport` (the API over HttpURLConnection;
   HTTPS, unfret.net only, no redirects), `PageReading` + `AnalyzeRequest` (the reader's answers, and the request as
-  the extension builds it), `KeyVault` + `KeystoreBox` (the key), `SharedLink` (the link in shared text).
+  the extension builds it), `KeyVault` + `KeystoreBox` (the key), `SharedLink` (the link in shared text),
+  `FreePass` + `ProofOfWork` + `PassSetup` (the app's own pass on first launch), `BackedUpFlag` (the one backed-up
+  yes/no), `PassLink` + `PassLinkActivity` (a pass from a link).
 - Native Android Views with Material 3 (Material Components), not Compose: the app is three screens, a WebView sits
   naturally in a View hierarchy, and it keeps the APK and the dependency list small (AppCompat and Material,
   nothing else).
 - No JavaScript interface is exposed to the page: the app asks the reader for its result with
   `evaluateJavascript` polls, so a page's scripts get nothing to call.
-- The API contract is the backend's `docs/api-contract-v1.md`; the app uses `GET /v1/credits` and
-  `POST /v1/analyze/stream`, with the extension's request body and its plain-words error messages.
+- The API contract is the backend's `docs/api-contract-v1.md`; the app uses `GET /v1/credits`,
+  `POST /v1/analyze/stream`, `GET /v1/keys/challenge`, `POST /v1/keys` and `POST /v1/keys/move-free-checks`, with
+  the extension's request bodies and its plain-words error messages.
 
 Debug builds have a switch for the dev deployment (dev.unfret.net, test network); release builds always use
 unfret.net.
@@ -113,7 +125,7 @@ make check      # all of the above, as CI runs it
 make extractor  # rebuild the page reader from the extension commit in extractor/EXTENSION_COMMIT
 ```
 
-Install the debug APK with `adb install dist/unfret-0.1.0-beta.1-debug.apk`, or copy it to a phone and open it (allow
+Install the debug APK with `adb install dist/unfret-0.1.0-beta.2-debug.apk`, or copy it to a phone and open it (allow
 installing from that source).
 
 CI (`.forgejo/workflows/ci.yaml`, runner `kroshtan-public`) runs the same checks in the same images. Releases and

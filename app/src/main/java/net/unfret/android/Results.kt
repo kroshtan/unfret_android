@@ -276,11 +276,47 @@ data class AnalysisResult(
 }
 
 /** `GET /v1/credits`. */
-data class Credits(val checksRemaining: Int, val inviteEligible: Boolean?) {
+/**
+ * `GET /v1/credits`: the checks left, and of them the free ones ([freeLeft]: spent before bought ones); [freePaused]
+ * when today's free deep checks are all used (they are back tomorrow; quick checks still work).
+ */
+data class Credits(
+    val checksRemaining: Int,
+    val inviteEligible: Boolean?,
+    val freeLeft: Int = 0,
+    val freePaused: Boolean = false,
+) {
+    /** Only a quick check can run: no checks left, or only free ones while today's are all used (the extension's). */
+    val quickOnly: Boolean get() = checksRemaining == 0 || (freePaused && freeLeft == checksRemaining)
+
     companion object {
         fun parse(json: JSONObject) = Credits(
             checksRemaining = json.optInt("checks_remaining", 0).coerceAtLeast(0),
             inviteEligible = if (json.has("invite_eligible")) json.optBoolean("invite_eligible") else null,
+            freeLeft = json.optInt("free_checks_remaining", 0).coerceAtLeast(0),
+            freePaused = json.optBoolean("free_checks_paused", false),
+        )
+    }
+}
+
+/** `GET /v1/keys/challenge`: the proof of work a new pass needs. */
+data class KeyChallenge(val challenge: String, val bits: Int) {
+    companion object {
+        fun parse(json: JSONObject) = KeyChallenge(json.getString("challenge"), json.getInt("bits"))
+    }
+}
+
+/** `POST /v1/keys`: a new pass, its backup code (shown this once), and how many free checks it came with. */
+class IssuedKey(val key: String, val keyId: String, val recoveryCode: String, val freeChecks: Int) {
+    /** Never the key or the code: an IssuedKey must not end up in a log by accident. */
+    override fun toString() = "IssuedKey($keyId, free=$freeChecks)"
+
+    companion object {
+        fun parse(json: JSONObject) = IssuedKey(
+            key = json.getString("key"),
+            keyId = json.getString("key_id"),
+            recoveryCode = json.getString("recovery_code"),
+            freeChecks = json.optInt("free_checks", 0).coerceAtLeast(0),
         )
     }
 }

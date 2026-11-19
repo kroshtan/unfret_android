@@ -139,7 +139,25 @@ class KeyVaultTest {
     }
 
     @Test
-    fun `a new pass with free checks comes from the link checker`() {
-        assertEquals("https://unfret.net/check", freePassUrl("https://unfret.net"))
+    fun `the backup code of the app's own pass is sealed, and goes with the pass`() {
+        val store = MemoryStore()
+        val vault = KeyVault(store, FakeBox())
+        val code = "ufr_abcdefgh23_" + "d".repeat(52)
+
+        vault.save(key, code)
+
+        assertEquals(code, vault.recoveryCode())
+        assertFalse(store.values.values.any { it.contains(code) || it.contains(key) })
+        vault.save("ufk_zyxwvuts23_" + "c".repeat(52))
+        assertNull(vault.recoveryCode())
+
+        vault.save(key, code)
+        vault.clear()
+        assertNull(vault.recoveryCode())
+        assertTrue(store.values.isEmpty())
+
+        vault.save(key, code)
+        vault.rejected(key)
+        assertNull(vault.recoveryCode())
     }
 }

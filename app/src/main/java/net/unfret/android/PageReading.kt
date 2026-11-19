@@ -63,16 +63,18 @@ object AnalyzeRequest {
     const val MAX_UPLOAD_TEXT_CHARS = 24_000
 
     /**
-     * `{url: facts.url, page_facts: facts, page_content?: text}` from the reader's `{facts, text}`. Nothing is added:
-     * no device, no language, nothing about the user.
+     * `{url: facts.url, page_facts: facts, page_content?: text}` from the reader's `{facts, text}`, and `tier: "quick"`
+     * for the free quick check ([quick]; a deep check sends no tier, the server's default). Nothing is added: no
+     * device, no language, nothing about the user.
      */
-    fun fromExtraction(extraction: JSONObject): JSONObject {
+    fun fromExtraction(extraction: JSONObject, quick: Boolean = false): JSONObject {
         val facts = extraction.optJSONObject("facts") ?: throw IllegalArgumentException("no page facts")
         val url = facts.optString("url")
         require(SharedLink.isWebAddress(url)) { "the page has no web address" }
         val body = JSONObject().put("url", url).put("page_facts", facts)
         val upload = capped(extraction.optString("text"))
         if (upload.isNotEmpty()) body.put("page_content", upload)
+        if (quick) body.put("tier", "quick")
         return body
     }
 
