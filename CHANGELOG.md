@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.1.0-beta.2 (unreleased)
+
+- **5 free deep checks on a new install**, as the browser extension gives on install. After the intro, the app makes
+  its own Unfret pass: `GET /v1/keys/challenge`, the proof of work solved on the phone (on the phone's cores, never
+  easier; 18 bits takes well under a second on an emulator, a "Still working" line appears if it takes more than a
+  few seconds), then `POST /v1/keys` with `"free": true`. The pass is kept like a pasted one (sealed by the Android
+  Keystore), with its backup code, which the home screen shows under **Backup code** (the phone holds the only
+  copy). The setup card says "You have 5 free checks" in the extension's welcome words; a pass that came with none
+  (the server's daily limit per network) says "There were no free checks to give just now". No pass is made when
+  one is on the phone already (pasted, from a link, or from beta.1). After that, a phone without a pass gets **Get
+  your free checks** (or **Get a new pass**) on the home screen, also after a pass ended (instead of the website's
+  link checker). Free checks are spent before bought ones (the server's order); the home screen says "You have N free
+  checks" while all the checks left are free ones.
+- **Not twice on a reinstall.** Android Auto Backup now keeps one file: `shared_prefs/free_checks.xml`, a yes that
+  this phone received its free checks (`res/xml/backup_rules.xml` for Android 11 and older,
+  `res/xml/data_extraction_rules.xml` for cloud backups and device transfers on 12 and later; `allowBackup` is on, and
+  the rules include that file only). The pass never goes into a backup. Restored at install time, before the first
+  launch, the flag makes the new pass come without free checks, and the app says why: "This phone has had its free
+  checks already". No device identifier is used. Testing it by hand with `bmgr`: docs/TESTING-BY-HAND.md.
+- **Pass links** (Android App Link, `autoVerify`): the "Use on your phone" QR code on unfret.net
+  (`https://unfret.net/pass#pass=ufk_…`, path `/pass` only; debug builds also `dev.unfret.net`) opens the app, which
+  reads the pass from the fragment, checks its form, and asks first: "Use this pass here?" with its ID, or, with
+  another pass on the phone, "Use the new pass" / "Keep the current one" (the website's and the extension's words).
+  The pass is checked with the server before it is kept; switching from the app's own pass moves its free checks
+  left (`POST /v1/keys/move-free-checks`). On a first launch the intro comes first, and a pass from a link means no
+  free pass is made. The pass is never logged, saved outside the sealed store, or kept in Recents. Verification
+  needs unfret.net to serve `/.well-known/assetlinks.json` (the backend's next deploy).
+- **Quick checks once the deep checks are used up**: with no checks left, or only free ones while today's are all
+  used ("Free deep checks are back tomorrow. Quick checks still work."), the check screen's button becomes **Quick
+  check (free)** (`"tier": "quick"`), as in the extension.
+- The intro says the app makes its own pass and what Android's backup keeps; it is asked again once (consent
+  version 2). PRIVACY.md says the same.
+- `versionCode` 2, `versionName` 0.1.0-beta.2.
+
 ## 0.1.0-beta.1 (unreleased)
 
 The first version, released as a **beta**.

@@ -67,6 +67,9 @@ class CheckActivity : AppCompatActivity() {
     private var busy = false
     private var pollingSince = 0L
 
+    /** The check being read is the free quick check (offered once the pass has no deep checks to use). */
+    private var quick = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -244,9 +247,10 @@ class CheckActivity : AppCompatActivity() {
         action.setOnClickListener { startCheck() }
     }
 
-    private fun startCheck() {
+    private fun startCheck(quick: Boolean = false) {
         if (busy) return
         busy = true
+        this.quick = quick
         action.isEnabled = false
         status.setText(R.string.reading_page)
         web.evaluateJavascript(bundle + PageReading.START, null)
@@ -275,7 +279,8 @@ class CheckActivity : AppCompatActivity() {
         status.setText(R.string.read_failed)
         action.setText(R.string.try_again)
         action.isEnabled = true
-        action.setOnClickListener { startCheck() }
+        val again = quick
+        action.setOnClickListener { startCheck(again) }
     }
 
     private fun send(extraction: JSONObject) {
@@ -284,7 +289,7 @@ class CheckActivity : AppCompatActivity() {
             var steps = 0
             var request: JSONObject? = null
             val outcome = try {
-                val body = AnalyzeRequest.fromExtraction(extraction)
+                val body = AnalyzeRequest.fromExtraction(extraction, quick)
                 request = body
                 Result.success(
                     UnfretApi(base, key, HttpUrlTransport()).analyze(body) {
@@ -320,9 +325,10 @@ class CheckActivity : AppCompatActivity() {
         status.setText(problem.message())
         action.isEnabled = true
         when (problem) {
-            Problem.NO_CHECKS -> {
-                action.setText(R.string.get_checks)
-                action.setOnClickListener { openInBrowser(checkoutUrl(base, hasKey = true)) }
+            Problem.NO_CHECKS, Problem.FREE_PAUSED -> {
+                // As the extension: only a quick check can run now, and it is free (checks come from the home screen).
+                action.setText(R.string.quick_check)
+                action.setOnClickListener { startCheck(quick = true) }
             }
             Problem.BAD_KEY -> {
                 // The stored pass ended (Unfret retired its old passes, or it was replaced): the home screen says so.
@@ -336,7 +342,8 @@ class CheckActivity : AppCompatActivity() {
             }
             else -> {
                 action.setText(R.string.try_again)
-                action.setOnClickListener { startCheck() }
+                val again = quick
+                action.setOnClickListener { startCheck(again) }
             }
         }
     }

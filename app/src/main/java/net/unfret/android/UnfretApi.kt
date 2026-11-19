@@ -10,6 +10,9 @@ class ApiError(val status: Int, val code: String, detail: String) : Exception(de
     val badKey: Boolean get() = status == 401
     val needsChecks: Boolean get() = status == 402 || code == "INSUFFICIENT_CREDITS"
     val serviceOff: Boolean get() = status == 503
+
+    /** Only free checks are left, and today's are all used (429): they are back tomorrow, quick checks still work. */
+    val freePaused: Boolean get() = code == "FREE_CHECKS_PAUSED"
 }
 
 data class HttpRequest(val method: String, val url: String, val headers: Map<String, String>, val body: String?)
@@ -114,6 +117,18 @@ class UnfretApi(private val base: String, private val key: String, private val t
     }
 
     /**
+     * `POST /v1/keys/move-free-checks`: this pass's free checks left go to the pass [toKeyId] (the app switching from
+     * the pass it made for itself to one the user brought). Returns how many moved.
+     */
+    fun moveFreeChecks(toKeyId: String): Int {
+        val body = JSONObject().put("to_key_id", toKeyId).toString()
+        return transport.send(HttpRequest("POST", "$base/v1/keys/move-free-checks", headers(true), body)).use { response ->
+            if (response.status !in 200..299) throw errorFrom(response)
+            JSONObject(response.reader.readText()).optInt("moved", 0)
+        }
+    }
+
+    /**
      * `POST /v1/reports`: "Wrong result?". [request] is the analysed request exactly as sent, [verdict] and
      * [explanation] the result as returned; [reason] one of real_brand, scam, junk, other. The user agreed to share
      * this one check's page facts, page text and result for review (`consent`). Returns the outcome: queued,
@@ -133,7 +148,33 @@ class UnfretApi(private val base: String, private val key: String, private val t
         }
     }
 
-    private fun errorFrom(response: HttpResponse): ApiError {
+    companion object {
+        /** `GET /v1/keys/challenge`: a proof-of-work challenge for a new pass (no pass needed). */
+        fun keyChallenge(base: String, transport: Transport): KeyChallenge {
+            require(base in BASES) { "not an Unfret server: $base" }
+            val headers = mapOf("Accept-Language" to "en", "User-Agent" to USER_AGENT)
+            return transport.send(HttpRequest("GET", "$base/v1/keys/challenge", headers, null)).use { response ->
+                if (response.status !in 200..299) throw errorFrom(response)
+                KeyChallenge.parse(JSONObject(response.reader.readText()))
+            }
+        }
+
+        /**
+         * `POST /v1/keys`: a new pass for a solved challenge, with free checks when [free] (the server gives them only
+         * within its per-network daily limit: [IssuedKey.freeChecks] says how many came). Only the challenge, its
+         * solution and that yes/no are sent: nothing about the phone.
+         */
+        fun createKey(base: String, transport: Transport, challenge: String, solution: String, free: Boolean): IssuedKey {
+            require(base in BASES) { "not an Unfret server: $base" }
+            val headers = mapOf("Accept-Language" to "en", "User-Agent" to USER_AGENT, "Content-Type" to "application/json")
+            val body = JSONObject().put("challenge", challenge).put("solution", solution).put("free", free).toString()
+            return transport.send(HttpRequest("POST", "$base/v1/keys", headers, body)).use { response ->
+                if (response.status !in 200..299) throw errorFrom(response)
+                IssuedKey.parse(JSONObject(response.reader.readText()))
+            }
+        }
+
+        private fun errorFrom(response: HttpResponse): ApiError {
         val body = try {
             JSONObject(response.reader.readText())
         } catch (_: Exception) {
@@ -146,7 +187,6 @@ class UnfretApi(private val base: String, private val key: String, private val t
         )
     }
 
-    companion object {
         /**
          * A photo from the API's own thumbnail proxy ([apiImage] decides which URLs qualify), without the key: the
          * thumbnails are public. Returns null when it can't be loaded.

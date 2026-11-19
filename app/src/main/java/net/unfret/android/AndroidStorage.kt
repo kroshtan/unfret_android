@@ -65,11 +65,39 @@ class PrefsStore(private val prefs: SharedPreferences) : StringStore {
 }
 
 /**
- * What the app keeps on the phone: the sealed API key, whether the intro was accepted (and which version), and in
- * debug builds which server to use. Nothing about the pages checked.
+ * The flag Android backs up (`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`: this file only): that
+ * this phone already received its free checks. A yes, nothing else; never the pass. It lives in a file of its own
+ * so the backup rules can name exactly it.
+ *
+ * Auto Backup restores the file when the app is installed again, before it first runs (the app is not running then,
+ * or is stopped for the restore), so reading it when the free pass is made, not earlier, sees the restored value.
+ */
+class BackedUpFlag(context: Context) : FreeChecksFlag {
+    private val app = context.applicationContext
+
+    private fun prefs() = app.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+
+    override fun received(): Boolean = prefs().getBoolean(RECEIVED, false)
+
+    override fun markReceived() {
+        // Written at once: the backup may run before the app writes anything else.
+        prefs().edit(commit = true) { putBoolean(RECEIVED, true) }
+    }
+
+    companion object {
+        /** The SharedPreferences file: `shared_prefs/free_checks.xml`, the one path the backup rules include. */
+        const val FILE = "free_checks"
+        const val RECEIVED = "received"
+    }
+}
+
+/**
+ * What the app keeps on the phone: the sealed API key (and the sealed backup code of a pass the app made itself),
+ * whether the intro was accepted (and which version), whether the first pass was set up, and in debug builds which
+ * server to use. Nothing about the pages checked. None of it is in a backup ([BackedUpFlag] is a file of its own).
  */
 class AppSettings(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences("unfret", Context.MODE_PRIVATE)
+    private val prefs = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
     val vault = KeyVault(PrefsStore(prefs), KeystoreBox())
 
@@ -87,9 +115,24 @@ class AppSettings(context: Context) {
             prefs.edit { putString(SERVER, value) }
         }
 
-    private companion object {
-        const val CONSENT = "consent_version"
-        const val CONSENT_VERSION = 1
-        const val SERVER = "server"
+    /**
+     * The first launch's pass is settled: the app made its own, or a pass was pasted or taken from a link (or the
+     * link's question answered). From then on a missing pass is made only when the user asks.
+     */
+    var firstPassDone: Boolean
+        get() = prefs.getBoolean(FIRST_PASS, false)
+        set(value) {
+            prefs.edit { putBoolean(FIRST_PASS, value) }
+        }
+
+    companion object {
+        /** `shared_prefs/unfret.xml`: excluded from every backup. */
+        const val FILE = "unfret"
+        private const val CONSENT = "consent_version"
+
+        /** 2: the intro says the app makes its own pass and what is backed up (0.1.0-beta.2). */
+        private const val CONSENT_VERSION = 2
+        private const val SERVER = "server"
+        private const val FIRST_PASS = "first_pass_done"
     }
 }

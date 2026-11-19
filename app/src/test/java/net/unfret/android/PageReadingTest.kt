@@ -37,6 +37,13 @@ class PageReadingTest {
     }
 
     @Test
+    fun `the free quick check says so, a deep check sends no tier`() {
+        val extraction = JSONObject().put("facts", JSONObject().put("url", "https://shop.test/p")).put("text", "Lamp")
+        assertEquals("quick", AnalyzeRequest.fromExtraction(extraction, quick = true).getString("tier"))
+        assertFalse(AnalyzeRequest.fromExtraction(extraction).has("tier"))
+    }
+
+    @Test
     fun `the request is the extension's`() {
         val facts = JSONObject("""{"platform":"generic","url":"https://shop.test/p?v=1","title":"Lamp","price":19.99,"rating":4.5,"review_count":12,"reviews":[],"seller_profile":null,"markup_names":["jdgm-widget","data-dsers-product"],"external_refs":["cdn.jdgm.io","supplier.test/p/1"]}""")
         val body = AnalyzeRequest.fromExtraction(JSONObject().put("facts", facts).put("text", "Glow lamp\nIn stock"))

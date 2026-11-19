@@ -1,6 +1,6 @@
 # Unfret privacy policy (Android app)
 
-_Last updated: 18 November 2026 (version 0.1.0: "Unfret pass" wording, free checks, contact hello@unfret.net; the names in the page's code and the other sites it refers to). Draft for the store listing; to be reviewed before publication._
+_Last updated: 19 November 2026 (version 0.1.0-beta.2: the app makes its own pass with free checks; one yes/no in Android's backup; a pass from a link. Earlier: "Unfret pass" wording, free checks, contact hello@unfret.net; the names in the page's code and the other sites it refers to). Draft for the store listing; to be reviewed before publication._
 
 Unfret is made by Kroshtan (Floris van Beers, the Netherlands). The app works like the Unfret browser extension
 and follows the same rules; the extension's policy is in its repository, the server's at <https://unfret.net/privacy>.
@@ -35,12 +35,20 @@ Only to the Unfret API (`unfret.net`, hosted in the EU), when you tap "Check thi
 - the page address, and the product facts and text described above;
 - your Unfret pass (an anonymous key, `ufk_…`: no name, no e-mail, no account), whose checks the check uses.
 
-The app doesn't make a pass itself: you paste one you have from unfret.net (with a pack you bought, a gift code from
-a friend, or the free pass the link checker made for you). Whatever checks the pass holds, free checks included,
-work in the app the same way.
+**Your pass.** Once you accept the intro, the app makes its own pass, as the browser extension does on install: it
+asks `unfret.net` for a small puzzle (`GET /v1/keys/challenge`), solves it on the phone (a proof of work that keeps
+free passes fair), and sends the answer with one yes or no, whether to include the free checks (`POST /v1/keys`).
+Nothing else: no account, no e-mail, no device identifier (no Android ID, advertising ID, App Set ID or Play
+Integrity). The server gives free checks only to a few new passes per network per day, and to count that it uses
+the network address the request came from, as described at <https://unfret.net/privacy>. No pass is made if you
+already have one on the phone. You can also paste a pass you have from unfret.net (a pack you bought, a gift code
+from a friend), or open a pass link from the "Use on your phone" QR code there (`https://unfret.net/pass#pass=…`):
+the app asks before it uses that pass, and the pass in the link goes nowhere but to `unfret.net`, to check it. When
+you switch from the pass the app made to another one of yours, its free checks left move to that pass
+(`POST /v1/keys/move-free-checks`, with the old pass).
 
 When you save a pass, and when the home screen shows your remaining checks, the app asks `unfret.net` for the
-pass's balance (with the pass). Requests name the app and its version (`Unfret-Android/0.1.0-beta.1`), not your phone.
+pass's balance (with the pass). Requests name the app and its version (`Unfret-Android/0.1.0-beta.2`), not your phone.
 
 A result that found the same product on another shop shows both photos as small thumbnails, which the app loads
 from `unfret.net` itself (`/v1/images/…`, without your pass): your phone never contacts the other shop.
@@ -54,17 +62,25 @@ The app makes no other requests: no analytics, no trackers, no advertising or cr
 Play Services. The page you open is loaded by Android's system WebView, which talks to that page's own servers
 like any browser; its usage statistics are switched off for this app.
 
-"Get checks", "Get a new pass", "Have a code?", "Your shop? Object to this result" and "Privacy policy" open unfret.net in your own browser; whatever you do there is
+"Get checks", "Have a code?", "Your shop? Object to this result" and "Privacy policy" open unfret.net in your own browser; whatever you do there is
 covered by the website's policy, not by the app.
 
 ## What is stored on your phone
 
 - your Unfret pass, encrypted with a key kept in the Android Keystore (it can't be read back off the phone, and it
-  isn't included in backups or device transfers);
-- that you accepted the intro screen (and, in test builds only, which server to use);
+  isn't included in backups or device transfers); for a pass the app made itself, also its backup code, encrypted the
+  same way (the app shows it under **Backup code**, since the phone holds the only copy);
+- that you accepted the intro screen, that the first pass was set up (and, in test builds only, which server to use);
+- whether this phone already received its free checks (a yes or no; see backups below);
 - for a moment, that your stored pass ended: when unfret.net no longer knows it (Unfret retired its old passes, or
   the pass was replaced with its backup code), the app removes it and keeps a yes until the home screen has said so
   once.
+
+**In Android's backup: one yes or no.** If backup is on for your phone, Android keeps a copy of one thing from this
+app in your own Google backup (and in a transfer to a new phone): that this phone already received its free checks,
+so that reinstalling the app doesn't give them a second time. Nothing else from the app is backed up: never your
+pass or its backup code, not the intro, nothing about pages. This yes or no stays on your phone and in your own
+backup; it is never sent to Unfret. Turning off backup for your phone, or deleting its backup, deletes it there.
 
 Nothing about the pages you check. The built-in browser starts empty for every page; when you close it, its
 cookies, site storage, cache and other files are deleted and its process ends. Results are shown, never saved.
