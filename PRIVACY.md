@@ -7,11 +7,11 @@ and follows the same rules; the extension's policy is in its repository, the ser
 
 ## What the app reads
 
-Nothing, until you tap **Check this page**. Sharing a link to Unfret, or pasting one, opens the page in the app's
+Nothing, until you tap **Check this page** or **Quick check (free)**. Sharing a link to Unfret, or pasting one, opens the page in the app's
 built-in browser view, over your phone's own internet connection, as any browser would; Unfret's server is not
 involved in loading it.
 
-When you tap **Check this page**, the app reads the page shown, on your phone: product facts (title, brand, seller,
+When you tap either, the app reads the page shown, on your phone: product facts (title, brand, seller,
 price, ratings, review texts and dates, shop policies, hidden text, checkboxes, countdowns), what the shop or
 company publishes about itself (its phone numbers, e-mail addresses and address from its contact, legal or imprint
 section, footer or structured data; registration and licence numbers; payment methods it mentions) and the visible
@@ -30,10 +30,11 @@ The page itself is not changed. The code that does this is the browser extension
 
 ## What is sent, and to whom
 
-Only to the Unfret API (`unfret.net`, hosted in the EU), when you tap "Check this page":
+Only to the Unfret API (`unfret.net`, hosted in the EU), when you tap "Check this page" or "Quick check (free)":
 
 - the page address, and the product facts and text described above;
-- your Unfret pass (an anonymous key, `ufk_…`: no name, no e-mail, no account), whose checks the check uses.
+- your Unfret pass (an anonymous key, `ufk_…`: no name, no e-mail, no account), whose checks a deep check uses. A
+  quick check uses none; without a pass on the phone it is sent without one.
 
 **Your pass.** Once you accept the intro, the app makes its own pass, as the browser extension does on install: it
 asks `unfret.net` for a small puzzle (`GET /v1/keys/challenge`), solves it on the phone (a proof of work that keeps

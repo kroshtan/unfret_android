@@ -67,5 +67,27 @@
             android:layout_marginTop="8dp"
             android:enabled="false"
             android:text="@string/check_page" />
+
+        <!-- The free quick check, secondary, before a check (QuickCheck): the hint below is read with it. -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/quick_check"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:contentDescription="@string/quick_check_described"
+            android:enabled="false"
+            android:text="@string/quick_check"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/quick_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:importantForAccessibility="no"
+            android:text="@string/quick_hint"
+            android:textAppearance="@style/TextAppearance.Unfret.Small"
+            android:visibility="gone" />
     </LinearLayout>
 </LinearLayout>

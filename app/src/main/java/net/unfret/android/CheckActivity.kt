@@ -53,9 +53,12 @@ class CheckActivity : AppCompatActivity() {
     private lateinit var bar: View
     private lateinit var status: TextView
     private lateinit var action: MaterialButton
+    private lateinit var quickButton: MaterialButton
+    private lateinit var quickHint: TextView
     private lateinit var resultView: ResultView
 
-    private lateinit var key: String
+    /** The pass, or null: without one only the free quick check runs. */
+    private var key: String? = null
     private lateinit var base: String
     private var bundle: String = ""
 
@@ -67,8 +70,17 @@ class CheckActivity : AppCompatActivity() {
     private var busy = false
     private var pollingSince = 0L
 
-    /** The check being read is the free quick check (offered once the pass has no deep checks to use). */
+    /** The check being read is the free quick check. */
     private var quick = false
+
+    /** The pass's balance, once the server has said ([QuickCheck.offer]). */
+    private var credits: Credits? = null
+
+    /** Why the server refused a deep check on this screen (no checks, or today's free ones used): quick checks then. */
+    private var deepRefused: Problem? = null
+
+    /** Said above a result that was meant to be a deep check and became a quick one. */
+    private var quickNote: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -80,9 +92,8 @@ class CheckActivity : AppCompatActivity() {
             finish()
             return
         }
-        val savedKey = settings.vault.load()
-        if (!settings.consented || savedKey == null) {
-            // Set up first (the intro, a key); the link waits on the home screen.
+        if (!settings.consented) {
+            // Set up first (the intro, then a pass); the link waits on the home screen.
             Toast.makeText(this, R.string.setup_first, Toast.LENGTH_SHORT).show()
             startActivity(
                 Intent(this, MainActivity::class.java)
@@ -92,7 +103,8 @@ class CheckActivity : AppCompatActivity() {
             finish()
             return
         }
-        key = savedKey
+        // Without a pass the page still opens: the quick check is free for everyone.
+        key = settings.vault.load()
         base = settings.apiBase
         if (!SharedLink.isCheckable(url, base)) {
             Toast.makeText(this, R.string.link_not_checkable, Toast.LENGTH_LONG).show()
@@ -113,6 +125,9 @@ class CheckActivity : AppCompatActivity() {
         bar = findViewById(R.id.bar)
         status = findViewById(R.id.status)
         action = findViewById(R.id.check_page)
+        quickButton = findViewById(R.id.quick_check)
+        quickHint = findViewById(R.id.quick_hint)
+        quickButton.setOnClickListener { startCheck(quick = true) }
         resultView = ResultView(findViewById(R.id.result_content), layoutInflater)
 
         toolbar.setNavigationOnClickListener { finish() }
@@ -124,8 +139,11 @@ class CheckActivity : AppCompatActivity() {
         resultView.onReport = ::askReport
         resultView.onObject = { openInBrowser("$base/objection") }
         resultView.onDeepHint = { runDeep ->
-            // A deep check of the same page, charged as any (the app's checks are deep), or the checkout.
-            if (runDeep) {
+            // A deep check of the same page, charged as any (free checks first), or getting checks: on the home screen
+            // without a pass (its free checks), at the checkout with one.
+            if (key == null) {
+                startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            } else if (runDeep) {
                 showPage()
                 startCheck()
             } else {
@@ -147,7 +165,25 @@ class CheckActivity : AppCompatActivity() {
         setUpWebView()
         forgetBrowsingData()
         setReady(false)
+        loadCredits()
         web.loadUrl(url)
+    }
+
+    /** The pass's balance, so a pass without deep checks to use is offered the quick check first. */
+    private fun loadCredits() {
+        val pass = key ?: return
+        background.execute {
+            val known = try {
+                UnfretApi(base, pass, HttpUrlTransport()).credits()
+            } catch (_: Exception) {
+                null // the check itself says what's wrong
+            }
+            runOnUiThread {
+                if (isDestroyed || known == null) return@runOnUiThread
+                credits = known
+                if (!busy && !resultPanel.isVisible) setReady(action.isEnabled)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -241,16 +277,37 @@ class CheckActivity : AppCompatActivity() {
     }
 
     private fun setReady(ready: Boolean) {
-        status.setText(if (ready) R.string.page_ready else R.string.page_loading)
-        action.setText(R.string.check_page)
+        val offer = QuickCheck.offer(key != null, credits, deepRefused)
+        status.setText(
+            when {
+                !ready -> R.string.page_loading
+                offer.why == QuickCheck.Why.NO_PASS -> R.string.page_ready_no_pass
+                offer.why == QuickCheck.Why.NO_CHECKS -> R.string.problem_no_checks
+                offer.why == QuickCheck.Why.FREE_PAUSED -> R.string.problem_free_paused
+                else -> R.string.page_ready
+            },
+        )
+        val quickMain = offer.main == QuickCheck.Main.QUICK
+        action.setText(if (quickMain) R.string.quick_check else R.string.check_page)
+        action.contentDescription = if (quickMain) getString(R.string.quick_check_described) else null
         action.isEnabled = ready
-        action.setOnClickListener { startCheck() }
+        action.setOnClickListener { startCheck(quick = quickMain) }
+        showQuickOption(offer.quickOption, ready)
+    }
+
+    /** "Quick check (free)" under the main button, before a check, while the main button is the deep check. */
+    private fun showQuickOption(shown: Boolean, enabled: Boolean) {
+        quickButton.visibility = if (shown) View.VISIBLE else View.GONE
+        quickHint.visibility = quickButton.visibility
+        quickButton.isEnabled = enabled
     }
 
     private fun startCheck(quick: Boolean = false) {
         if (busy) return
         busy = true
         this.quick = quick
+        quickNote = null
+        showQuickOption(false, false)
         action.isEnabled = false
         status.setText(R.string.reading_page)
         web.evaluateJavascript(bundle + PageReading.START, null)
@@ -285,21 +342,35 @@ class CheckActivity : AppCompatActivity() {
 
     private fun send(extraction: JSONObject) {
         status.setText(R.string.sending)
+        val pass = key
+        val asQuick = quick || pass == null
         background.execute {
             var steps = 0
             var request: JSONObject? = null
+            var refused: Problem? = null
             val outcome = try {
-                val body = AnalyzeRequest.fromExtraction(extraction, quick)
+                val api = UnfretApi(base, pass, HttpUrlTransport())
+                val onStep: (String) -> Unit = {
+                    steps++
+                    val done = steps
+                    runOnUiThread {
+                        if (!isDestroyed) status.text = resources.getQuantityString(R.plurals.steps_done, done, done)
+                    }
+                }
+                var body = AnalyzeRequest.fromExtraction(extraction, asQuick)
                 request = body
-                Result.success(
-                    UnfretApi(base, key, HttpUrlTransport()).analyze(body) {
-                        steps++
-                        val done = steps
-                        runOnUiThread {
-                            if (!isDestroyed) status.text = resources.getQuantityString(R.plurals.steps_done, done, done)
-                        }
-                    },
-                )
+                val result = try {
+                    api.analyze(body, onStep)
+                } catch (e: ApiError) {
+                    // As the extension: a deep check that can't be paid for becomes a quick one, free, saying why.
+                    val problem = Problem.of(e)
+                    if (asQuick || !QuickCheck.fallsBackToQuick(problem)) throw e
+                    refused = problem
+                    body = AnalyzeRequest.fromExtraction(extraction, quick = true)
+                    request = body
+                    api.analyze(body, onStep)
+                }
+                Result.success(result)
             } catch (e: IllegalArgumentException) {
                 Result.failure<AnalysisResult>(ReadError(e))
             } catch (e: Exception) {
@@ -309,6 +380,10 @@ class CheckActivity : AppCompatActivity() {
                 if (isDestroyed) return@runOnUiThread
                 busy = false
                 shownRequest = request
+                refused?.let {
+                    deepRefused = it
+                    quickNote = if (it == Problem.FREE_PAUSED) R.string.quick_because_paused else R.string.quick_because_no_checks
+                }
                 outcome.fold(::showResult, ::showProblem)
             }
         }
@@ -325,14 +400,9 @@ class CheckActivity : AppCompatActivity() {
         status.setText(problem.message())
         action.isEnabled = true
         when (problem) {
-            Problem.NO_CHECKS, Problem.FREE_PAUSED -> {
-                // As the extension: only a quick check can run now, and it is free (checks come from the home screen).
-                action.setText(R.string.quick_check)
-                action.setOnClickListener { startCheck(quick = true) }
-            }
             Problem.BAD_KEY -> {
                 // The stored pass ended (Unfret retired its old passes, or it was replaced): the home screen says so.
-                settings.vault.rejected(key)
+                key?.let { settings.vault.rejected(it) }
                 status.setText(R.string.pass_ended)
                 action.setText(R.string.open_home)
                 action.setOnClickListener {
@@ -350,7 +420,7 @@ class CheckActivity : AppCompatActivity() {
 
     private fun showResult(result: AnalysisResult) {
         shown = result
-        resultView.show(result)
+        resultView.show(result, quickNote?.let(::getString))
         web.visibility = View.INVISIBLE
         bar.visibility = View.GONE
         progress.visibility = View.INVISIBLE
