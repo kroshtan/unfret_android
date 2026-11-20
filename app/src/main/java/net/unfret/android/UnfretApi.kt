@@ -83,10 +83,10 @@ class UnfretApi(private val base: String, private val key: String?, private val 
         }
 
     /**
-     * `POST /v1/analyze/stream`: calls [onStep] with each analysis step's name as it finishes, and returns the
-     * result. Throws [ApiError] for an error answer or event, IOException when the connection fails.
+     * `POST /v1/analyze/stream`: calls [onStep] with each analysis step as it finishes, and returns the result.
+     * Throws [ApiError] for an error answer or event, IOException when the connection fails.
      */
-    fun analyze(body: JSONObject, onStep: (String) -> Unit = {}): AnalysisResult {
+    fun analyze(body: JSONObject, onStep: (Step) -> Unit = {}): AnalysisResult {
         require(key != null || body.optString("tier") == "quick") { "a deep check needs a pass" }
         val request = HttpRequest(
             "POST",
@@ -105,7 +105,10 @@ class UnfretApi(private val base: String, private val key: String?, private val 
                     continue
                 }
                 when (event.event) {
-                    "step" -> data.optString("skill").takeIf { it.isNotEmpty() }?.let(onStep)
+                    "step" -> data.optString("skill").takeIf { it.isNotEmpty() }?.let {
+                        val check = if (data.has("check") && !data.isNull("check")) data.optBoolean("check") else null
+                        onStep(Step(it, check))
+                    }
                     "result" -> return AnalysisResult.parse(data)
                     "error" -> throw ApiError(
                         data.optInt("status", 500),
