@@ -1,0 +1,5 @@
+# The permissions unfret.net/android explains (unfret_backend: unfret.android_release.PERMISSIONS), one per line. A new
+# one needs its explanation there first. scripts/sign-release.sh (the APK) and scripts/sign-bundle.sh (the app bundle
+# for Google Play) refuse a build that asks for any other.
+android.permission.INTERNET
+net.unfret.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION

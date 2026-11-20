@@ -119,6 +119,7 @@ wrapper (9.9.1, checksum-verified).
 ```bash
 make apk        # debug APK at dist/unfret-<version>-debug.apk
 make release-apk  # the release APK, unsigned, at dist/unfret-<version>-unsigned.apk (what the release signs)
+make release-bundle  # the app bundle for Google Play, unsigned, at dist/unfret-<version>-unsigned.aab
 make test       # JVM unit tests, and the bundled extractor over the extension's fixture pages
 make lint       # Android lint (warnings are errors) and the bundle-matches-its-commit check
 make check      # all of the above, as CI runs it
