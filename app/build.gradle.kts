@@ -11,8 +11,8 @@ android {
         applicationId = "net.unfret.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.1.0-beta.2"
+        versionCode = 3
+        versionName = "0.1.0"
         // The Google Play build sells nothing and points nowhere to buy (Storefront); every other build is the direct
         // download's, with "Get checks".
         buildConfigField("boolean", "PLAY", "false")

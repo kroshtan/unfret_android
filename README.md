@@ -127,7 +127,7 @@ make check      # all of the above, as CI runs it
 make extractor  # rebuild the page reader from the extension commit in extractor/EXTENSION_COMMIT
 ```
 
-Install the debug APK with `adb install dist/unfret-0.1.0-beta.2-debug.apk`, or copy it to a phone and open it (allow
+Install the debug APK with `adb install dist/unfret-0.1.0-debug.apk`, or copy it to a phone and open it (allow
 installing from that source).
 
 CI (`.forgejo/workflows/ci.yaml`, runner `kroshtan-public`) runs the same checks in the same images. Releases and
