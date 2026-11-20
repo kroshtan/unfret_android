@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The page reader sends an Amazon page's whole gallery** (unfret_extension 167638d, `extractor/EXTENSION_COMMIT`).
+  On Amazon's mobile page the photos sent were the main image and the page's other images (banners, pixels); now
+  the carousel's large photos, in order, at most 12, so the deep check's photo steps see more than photo 1. The
+  refresh also brings the extension's Amazon brand (from the byline, in every language) and seller (the current offer
+  box's combined labels) reading.
 - **Releases go to Google Play by themselves.** The "Release APK" workflow now uploads the signed app bundle to
   Google Play and releases it (`scripts/play-upload.py`, the Android Publisher API with the service account in the
   repo secret `PLAY_SERVICE_ACCOUNT_JSON`): named after versionName, with this version's CHANGELOG section as its
