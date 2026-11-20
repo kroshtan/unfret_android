@@ -46,9 +46,16 @@ class Storefront(val play: Boolean) {
     fun noChecksLine(credits: Credits): Int? = if (play && credits.checksRemaining == 0) R.string.no_deep_checks_left else null
 
     /**
+     * The address of one of Unfret's informational pages ([INFO_PAGES]) on [base]. The Play build opens the site's
+     * variant for it ([PLAY_VARIANT]: no menu, and no link to buying, the text itself unchanged); the direct download
+     * opens the normal page.
+     */
+    fun infoPage(base: String, path: String): String = base.trimEnd('/') + path + if (play) "?$PLAY_VARIANT" else ""
+
+    /**
      * Whether the app may open [url] in the browser. The Play build opens only Unfret's informational pages
-     * ([INFO_PAGES]: the privacy policy, objections, about, terms), never the checkout, `/money` or anything else
-     * that sells checks.
+     * ([INFO_PAGES]: the privacy policy, objections, about, terms), and only as their Play variant ([infoPage]); never
+     * the checkout, `/money`, the normal pages (their menu links to buying) or anything else that sells checks.
      */
     fun mayOpen(url: String): Boolean {
         if (!play) return true
@@ -58,7 +65,7 @@ class Storefront(val play: Boolean) {
             return false
         }
         val unfret = uri.host?.lowercase()?.let { it == "unfret.net" || it.endsWith(".unfret.net") } ?: false
-        return !unfret || (uri.path.orEmpty().trimEnd('/') in INFO_PAGES)
+        return !unfret || (uri.path.orEmpty().trimEnd('/') in INFO_PAGES && uri.rawQuery == PLAY_VARIANT)
     }
 
     companion object {
@@ -67,6 +74,9 @@ class Storefront(val play: Boolean) {
 
         /** The pages of unfret.net the Play build may open: informational only. */
         val INFO_PAGES = setOf("/privacy", "/objection", "/about", "/terms")
+
+        /** The query that asks unfret.net for an informational page's Play variant (no menu, no link to buying). */
+        const val PLAY_VARIANT = "app=play"
 
         /**
          * Words that sell: a price, a currency, a pack, buying or the checkout (a number right after `%` is a format

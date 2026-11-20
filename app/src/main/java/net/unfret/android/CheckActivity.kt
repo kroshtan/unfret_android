@@ -137,7 +137,7 @@ class CheckActivity : AppCompatActivity() {
         resultView.base = base
         resultView.loadImage = ::loadThumbnail
         resultView.onReport = ::askReport
-        resultView.onObject = { openInBrowser("$base/objection") }
+        resultView.onObject = { openInBrowser(Storefront.current.infoPage(base, "/objection")) }
         resultView.onDeepHint = { runDeep ->
             // A deep check of the same page, charged as any (free checks first), or getting checks: on the home screen
             // without a pass (its free checks), at the checkout with one.
