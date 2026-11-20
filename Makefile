@@ -23,7 +23,7 @@ BUNDLE_BUILD_TYPE := play
 BUNDLE_TASK := bundle$(shell printf %s '$(BUNDLE_BUILD_TYPE)' | sed 's/^./\U&/')
 RELEASE_AAB := app/build/outputs/bundle/$(BUNDLE_BUILD_TYPE)/app-$(BUNDLE_BUILD_TYPE).aab
 
-.PHONY: build apk release-apk release-bundle test lint check extractor extractor-check extractor-test extractor-deps clean
+.PHONY: build apk release-apk release-bundle test lint check extractor extractor-check extractor-test extractor-deps play-store-images clean
 
 ## build: compile the debug app
 build:
@@ -75,6 +75,11 @@ extractor-check: extractor-deps
 
 extractor-test: extractor-deps
 	$(NODE) npm test
+
+## play-store-images: the Google Play listing's icon, feature graphic and phone screenshots of the play build, on an
+## emulator (store/play/README.md; needs /dev/kvm, node and Playwright's Chromium on the host)
+play-store-images:
+	store/play/screenshots.sh
 
 clean:
 	$(GRADLE) clean

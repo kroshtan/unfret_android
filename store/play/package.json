@@ -1,0 +1,16 @@
+{
+  "name": "unfret-android-play-store-images",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "description": "Renders the Google Play listing's icon, feature graphic and screenshots (README.md).",
+  "scripts": {
+    "graphics": "node graphics.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.65.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
