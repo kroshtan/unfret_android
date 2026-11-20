@@ -134,8 +134,9 @@ extractor if the extension changed (`extractor/README.md`).
    Data safety form: data collected: none stored by the app; sent to unfret.net: "Web browsing / page content the
    user chooses to check" for app functionality, not shared with third parties, encrypted in transit; no ads,
    no analytics. Content rating questionnaire; target audience adults.
-4. Payments: the app sells nothing and shows no prices; checks are bought on the website (no Play Billing needed).
-   Don't add in-app links or wording that urge buying outside Play beyond "Get checks" opening the website;
-   re-check Google's current payments policy before the first submission.
-5. Upload an Android App Bundle (`./gradlew bundleRelease`, signed with the same key) to the internal testing track
-   first.
+4. Payments: the Play build is the `play` build type (`Storefront`): it sells nothing, shows no price and points
+   nowhere to buy, no "Get checks" and no link to the checkout (no Play Billing needed); a gift code is redeemed in
+   the app. Its words are `src/play/res`'s over `src/main/res`'s, and StorefrontTest fails on a Play string that
+   speaks of buying. Re-check Google's current payments policy before the first submission.
+5. Upload the `play` app bundle (`./gradlew bundlePlay`, `app/build/outputs/bundle/play/app-play.aab`, signed with
+   the upload key) to the internal testing track first. Never the release build's: it has "Get checks".

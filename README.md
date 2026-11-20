@@ -80,7 +80,8 @@ had its free checks before (a flag restored from its own Android backup after a 
 and is told why. A pass can also be pasted, or handed over by the "Use on your phone" QR code on unfret.net
 (`https://unfret.net/pass#pass=…`, an Android App Link: the app asks before using it). **Nothing is sold in the
 app**: "Get checks" and "Have a code?" open unfret.net's checkout in your browser, where checks are bought or a code
-is redeemed onto a pass. Testing the backup and the link by hand: [docs/TESTING-BY-HAND.md](docs/TESTING-BY-HAND.md).
+is redeemed onto a pass. The Google Play build (`play`) has no "Get checks" and no word of buying, as Google Play
+asks; a gift code is redeemed in the app instead ([docs/RELEASING.md](docs/RELEASING.md), "Google Play"). Testing the backup and the link by hand: [docs/TESTING-BY-HAND.md](docs/TESTING-BY-HAND.md).
 
 ## How it works
 

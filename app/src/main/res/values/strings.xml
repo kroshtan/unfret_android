@@ -44,6 +44,27 @@
     <string name="change_key">Change pass</string>
     <string name="remove_key">Remove pass</string>
     <string name="checks_on_website">Checks are bought on unfret.net. Come back here when you have your pass.</string>
+    <!-- The Google Play build (Storefront): no checkout, a gift code is redeemed in the app -->
+    <string name="no_deep_checks_left">You have no deep checks left. Quick checks are free.</string>
+    <string name="have_gift_code">Have a gift code?</string>
+    <string name="gift_code_title">Your gift code</string>
+    <string name="gift_code_body">It starts with ufi_. Its checks go onto the Unfret pass on this phone.</string>
+    <string name="gift_code_hint">ufi_…</string>
+    <string name="gift_code_empty">Type or paste the gift code.</string>
+    <string name="redeem">Redeem</string>
+    <string name="redeeming">Redeeming the code…</string>
+    <!-- Why a gift code was refused (POST /v1/invites/redeem's error codes) -->
+    <string name="gift_code_invalid">That isn\'t a gift code (it starts with ufi_). Copy it again in full.</string>
+    <string name="gift_code_unknown">Unfret doesn\'t know this gift code. Copy it again in full.</string>
+    <string name="gift_code_used">This gift code has already been used.</string>
+    <string name="gift_code_own">This gift code came with this pass: give it to a friend.</string>
+    <string name="gift_code_monthly">You\'ve already used a gift code this month. This one still works next month, or give it to someone else.</string>
+    <string name="gift_code_ended">Codes like this have ended.</string>
+    <string name="gift_code_too_many">Too many codes tried from here. Wait a few minutes and try again.</string>
+    <plurals name="gift_code_added">
+        <item quantity="one">%d check added to your pass.</item>
+        <item quantity="other">%d checks added to your pass.</item>
+    </plurals>
 
     <string name="key_dialog_title">Your Unfret pass</string>
     <string name="key_dialog_body">It starts with ufk_. It is stored on this phone only, encrypted.</string>

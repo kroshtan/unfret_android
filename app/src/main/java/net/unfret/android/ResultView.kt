@@ -26,6 +26,9 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
     /** The button under a quick result's suggestion: true runs a deep check of the same page, false gets checks. */
     var onDeepHint: (runDeep: Boolean) -> Unit = {}
 
+    /** This build's: the Google Play build shows no purchase button or price ([Storefront.deepHint]). */
+    private val storefront = Storefront.current
+
     /** The API in use: photos are loaded only from its own thumbnail proxy. */
     var base: String = UnfretApi.PRODUCTION
 
@@ -141,7 +144,8 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
             )
             for (item in checklist) addCheck(item)
         }
-        result.deepHint?.let(::addDeepHint)
+        // The Google Play build: only a deep check that can run now, never "Get checks" or a price.
+        storefront.deepHint(result.deepHint)?.let(::addDeepHint)
         if (charge != null && !result.chargeFree) {
             val paid = TextView(context)
             paid.text = charge
@@ -152,8 +156,11 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         }
     }
 
-    /** What the check cost: the server's sentence (with the checks left), or the same words without the count. */
-    private fun chargeLine(result: AnalysisResult): String? = result.chargeNote ?: result.charge?.let {
+    /**
+     * What the check cost: the server's sentence (with the checks left), or the same words without the count (also in
+     * the Play build for a sentence about buying).
+     */
+    private fun chargeLine(result: AnalysisResult): String? = storefront.serverWords(result.chargeNote) ?: result.charge?.let {
         context.getString(
             when (it) {
                 Charge.QUICK -> R.string.charge_quick

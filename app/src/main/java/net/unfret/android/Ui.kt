@@ -10,8 +10,12 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 
-/** Open [url] in the user's own browser (checkout, privacy policy): never inside the app. */
+/**
+ * Open [url] in the user's own browser (checkout, privacy policy): never inside the app. The Google Play build opens
+ * no page that sells checks ([Storefront.mayOpen]).
+ */
 fun Activity.openInBrowser(url: String) {
+    if (!Storefront.current.mayOpen(url)) return
     try {
         startActivity(Intent(Intent.ACTION_VIEW, url.toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
     } catch (_: ActivityNotFoundException) {

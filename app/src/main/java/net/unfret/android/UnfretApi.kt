@@ -129,6 +129,19 @@ class UnfretApi(private val base: String, private val key: String, private val t
     }
 
     /**
+     * `POST /v1/invites/redeem`: a gift code (`ufi_…`, as typed; the server ignores case and surrounding spaces) adds
+     * its checks to this pass. Returns how many it added. Throws [ApiError] for a refusal, by its error code
+     * ([giftCodeRefusal]: not a code, unknown, used, from this pass's own pack, one this month already, too many tries).
+     */
+    fun redeemGiftCode(code: String): Int {
+        val body = JSONObject().put("code", code.trim()).toString()
+        return transport.send(HttpRequest("POST", "$base/v1/invites/redeem", headers(true), body)).use { response ->
+            if (response.status !in 200..299) throw errorFrom(response)
+            JSONObject(response.reader.readText()).optInt("checks_added", 0).coerceAtLeast(0)
+        }
+    }
+
+    /**
      * `POST /v1/reports`: "Wrong result?". [request] is the analysed request exactly as sent, [verdict] and
      * [explanation] the result as returned; [reason] one of real_brand, scam, junk, other. The user agreed to share
      * this one check's page facts, page text and result for review (`consent`). Returns the outcome: queued,

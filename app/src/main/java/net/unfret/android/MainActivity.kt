@@ -26,7 +26,8 @@ import java.util.concurrent.Executors
 
 /**
  * Home: the intro (once), a field to paste a link, and the account: remaining checks, the key, and the website
- * for buying checks or redeeming a code (nothing is sold in the app).
+ * for buying checks or redeeming a code (nothing is sold in the app). The Google Play build has no "Get checks" and
+ * redeems a gift code here ([Storefront]).
  *
  * The first launch, in order ([firstLaunchStep]): the intro; a pass from a link, if one opened the app (asked about
  * first); otherwise the app makes its own pass ([FreePass], with free checks unless this phone had them already) and
@@ -65,6 +66,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var setupBody: TextView
     private lateinit var setupNote: TextView
     private lateinit var setupAction: MaterialButton
+    private lateinit var haveCode: MaterialButton
+    private val storefront = Storefront.current
     private lateinit var flag: BackedUpFlag
     private val handler = Handler(Looper.getMainLooper())
 
@@ -125,10 +128,19 @@ class MainActivity : AppCompatActivity() {
                 false
             }
         }
-        findViewById<MaterialButton>(R.id.get_checks).setOnClickListener {
-            openInBrowser(checkoutUrl(settings.apiBase, key != null))
+        val getChecks = findViewById<MaterialButton>(R.id.get_checks)
+        getChecks.setOnClickListener { openInBrowser(checkoutUrl(settings.apiBase, key != null)) }
+        haveCode = findViewById(R.id.have_code)
+        if (storefront.sellsChecks) {
+            haveCode.setOnClickListener { openInBrowser(codeUrl(settings.apiBase)) }
+        } else {
+            // The Google Play build sells nothing: no "Get checks", no word of buying on unfret.net; a gift code is
+            // redeemed here, on the pass in use.
+            getChecks.visibility = View.GONE
+            findViewById<View>(R.id.checks_on_website).visibility = View.GONE
+            haveCode.setText(R.string.have_gift_code)
+            haveCode.setOnClickListener { askForGiftCode() }
         }
-        findViewById<MaterialButton>(R.id.have_code).setOnClickListener { openInBrowser(codeUrl(settings.apiBase)) }
         findViewById<MaterialButton>(R.id.new_pass).setOnClickListener { startFreePass() }
         makePass.setOnClickListener { startFreePass() }
         setKey.setOnClickListener { askForKey() }
@@ -237,6 +249,7 @@ class MainActivity : AppCompatActivity() {
         endedNext.setText(if (hadFree) R.string.pass_ended_next_had_free else R.string.pass_ended_next)
         setKey.setText(if (current == null) R.string.paste_key else R.string.change_key)
         removeKey.visibility = if (current == null) View.GONE else View.VISIBLE
+        if (storefront.redeemsInApp) haveCode.visibility = if (current == null) View.GONE else View.VISIBLE
         showRecovery.visibility = if (current != null && settings.vault.recoveryCode() != null) View.VISIBLE else View.GONE
         if (current == null) freeLeft = 0
         keyStatus.text = when {
@@ -427,8 +440,11 @@ class MainActivity : AppCompatActivity() {
             val text = try {
                 val c = UnfretApi(base, current, HttpUrlTransport()).credits()
                 runOnUiThread { if (asked == generation) freeLeft = c.freeLeft }
+                val none = storefront.noChecksLine(c)
                 // As the extension: "You have 5 free checks" while all the checks left are free ones.
-                if (c.freeLeft > 0 && c.freeLeft == c.checksRemaining) {
+                if (none != null) {
+                    getString(none)
+                } else if (c.freeLeft > 0 && c.freeLeft == c.checksRemaining) {
                     resources.getQuantityString(R.plurals.free_checks, c.checksRemaining, c.checksRemaining)
                 } else {
                     resources.getQuantityString(R.plurals.checks_left, c.checksRemaining, c.checksRemaining)
@@ -512,6 +528,51 @@ class MainActivity : AppCompatActivity() {
                             refreshCredits()
                         } else {
                             fieldLayout.error = getString(if (problem == Problem.BAD_KEY) R.string.key_rejected else problem.message())
+                        }
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    /** The Google Play build's "Have a gift code?": the code's checks go onto the pass in use ([UnfretApi.redeemGiftCode]). */
+    private fun askForGiftCode() {
+        val current = key ?: return
+        val view = layoutInflater.inflate(R.layout.dialog_gift_code, null)
+        val field = view.findViewById<TextInputEditText>(R.id.gift_code)
+        val fieldLayout = view.findViewById<TextInputLayout>(R.id.gift_code_layout)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.gift_code_title)
+            .setView(view)
+            .setPositiveButton(R.string.redeem, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.setOnShowListener {
+            val redeem = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            redeem.setOnClickListener {
+                val code = field.text?.toString()?.trim().orEmpty()
+                if (code.isEmpty()) {
+                    fieldLayout.error = getString(R.string.gift_code_empty)
+                    return@setOnClickListener
+                }
+                fieldLayout.error = null
+                fieldLayout.helperText = getString(R.string.redeeming)
+                redeem.isEnabled = false
+                val base = settings.apiBase
+                background.execute {
+                    val outcome = runCatching { UnfretApi(base, current, HttpUrlTransport()).redeemGiftCode(code) }
+                    runOnUiThread {
+                        if (isDestroyed) return@runOnUiThread
+                        redeem.isEnabled = true
+                        fieldLayout.helperText = null
+                        outcome.onSuccess { added ->
+                            dialog.dismiss()
+                            Toast.makeText(this, resources.getQuantityString(R.plurals.gift_code_added, added, added), Toast.LENGTH_LONG).show()
+                            refreshCredits()
+                        }.onFailure { e ->
+                            // Why the code was refused (used, unknown, one this month already), or what went wrong.
+                            fieldLayout.error = getString(giftCodeRefusal(e) ?: Problem.of(e).message())
                         }
                     }
                 }
