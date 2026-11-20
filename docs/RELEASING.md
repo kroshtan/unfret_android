@@ -149,7 +149,8 @@ extractor if the extension changed (`extractor/README.md`).
    (Play Console's "use an existing app signing key", exported with Google's PEPK tool) and make a separate *upload*
    key (a lost upload key can be reset). If Play generates its own signing key instead, the two kinds of install
    can't update each other: say so on unfret.net/android when the app is listed.
-3. Store listing from the README; privacy policy URL: publish [PRIVACY.md](../PRIVACY.md) on unfret.net.
+3. Store listing from the README; its images (icon, feature graphic, phone screenshots of the play build) are in
+   [store/play/](../store/play/README.md). Privacy policy URL: publish [PRIVACY.md](../PRIVACY.md) on unfret.net.
    Data safety form: data collected: none stored by the app; sent to unfret.net: "Web browsing / page content the
    user chooses to check" for app functionality, not shared with third parties, encrypted in transit; no ads,
    no analytics. Content rating questionnaire; target audience adults.
