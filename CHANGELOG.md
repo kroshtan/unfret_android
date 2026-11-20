@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-beta.2 (unreleased)
+## 0.1.0-beta.2 (2026-11-20)
 
 - **5 free deep checks on a new install**, as the browser extension gives on install. After the intro, the app makes
   its own Unfret pass: `GET /v1/keys/challenge`, the proof of work solved on the phone (on the phone's cores, never
@@ -50,7 +50,7 @@
   release APK is still `assembleRelease`). Decided when the app is built, not by the installer.
 - `versionCode` 2, `versionName` 0.1.0-beta.2.
 
-## 0.1.0-beta.1 (unreleased)
+## 0.1.0-beta.1 (2026-11-18)
 
 The first version, released as a **beta**.
 
