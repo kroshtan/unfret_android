@@ -10,9 +10,10 @@ Two kinds of build:
   attached to a Forgejo release and offered on [unfret.net/android](https://unfret.net/android).
 - **App bundle for Google Play** (the same workflow, once the upload key is set up): the `play` build (the release
   without prices, "Get checks" or the checkout link) as an Android App Bundle, built unsigned by Gradle
-  (`make release-bundle`), signed with the Play *upload* key by `scripts/sign-bundle.sh` (jarsigner), and attached to
-  the same Forgejo release for uploading to Play by hand. Not for a direct install: Play serves APKs it builds from
-  it, signed with the release key ("Google Play" below).
+  (`make release-bundle`), signed with the Play *upload* key by `scripts/sign-bundle.sh` (jarsigner), attached to
+  the same Forgejo release, and released on Google Play by `scripts/play-upload.py` (the production track unless
+  the run says otherwise). Not for a direct install: Play serves APKs it builds from it, signed with the release key
+  ("Google Play" below).
 
 ## Versions and betas
 
@@ -82,16 +83,17 @@ Repo secrets (Settings → Actions → Secrets):
 | `ANDROID_UPLOAD_KEYSTORE_PASSWORD` | its store password |
 | `ANDROID_UPLOAD_KEY_ALIAS` | `upload` |
 | `ANDROID_UPLOAD_KEY_PASSWORD` | its key's password (for PKCS12, the store password) |
+| `PLAY_SERVICE_ACCOUNT_JSON` | the JSON key of the Play service account `unfret-release@unfret-play.iam.gserviceaccount.com` ("Releasing on Google Play" below) |
 
-They reach only the signing steps, which run on the deploy runner (`kroshtan-deploy`), never the public one. A
+They reach only the signing and Play steps, which run on the deploy runner (`kroshtan-deploy`), never the public one. A
 keystore is written to a private temporary folder and deleted when the step ends; the passwords reach apksigner and
 jarsigner through the environment (`--ks-pass env:…`, `-storepass:env …`), never a command line. While one of the
 first four is missing the workflow builds and checks the unsigned APK, says signing isn't set up, and passes. While
 one of the `ANDROID_UPLOAD_*` four is missing it says the upload key isn't set up and skips the app bundle
 altogether (no build, no signature, nothing attached); the APK is released as before.
 
-Actions → **Release APK** → Run workflow, with `ref` `main` (or an existing tag such as `v0.1.0`, to build it again)
-and `dry_run` on first. It:
+Actions → **Release APK** → Run workflow, with `ref` `main` (or an existing tag such as `v0.1.0`, to build it again),
+`dry_run` on first, and `play_track` (`production`, the default; `internal`; or `none`, no Google Play). It:
 
 1. checks the commit is on main with CI passed, that `v<versionName>` is a release version (above) and doesn't name
    another commit, and that `versionCode` is above every published release's, betas included;
@@ -112,7 +114,10 @@ and `dry_run` on first. It:
    attaches the files (and the app bundle when there is one). An APK already attached is never replaced: the same
    file again is skipped, a different one stops the run. An app bundle already attached stays (jarsigner's signature
    differs on every run, in its timestamps), and `SHA256SUMS` names that one; a bundle attached to a release that
-   didn't have one yet replaces its `SHA256SUMS` with one that lists both.
+   didn't have one yet replaces its `SHA256SUMS` with one that lists both;
+6. with an app bundle, `PLAY_SERVICE_ACCOUNT_JSON` set and `play_track` not `none`: runs `scripts/play-upload.py`,
+   which releases the bundle on that Google Play track ("Releasing on Google Play" below). With `dry_run` it only
+   checks against Play, uploading and committing nothing.
 
 ### Reproducible
 
@@ -141,7 +146,10 @@ git.kroshtan.com, over HTTPS.
 Bump `versionCode` (always up, betas included) and `versionName` in `app/build.gradle.kts`, update CHANGELOG.md, and refresh the
 extractor if the extension changed (`extractor/README.md`).
 
-## Google Play (later)
+## Google Play
+
+Unfret is on Google Play since 0.1.0 (versionCode 3, sent for review 2026-11-20 by hand). Since then the "Release
+APK" workflow uploads each release's app bundle itself ("Releasing on Google Play" below). How it was set up:
 
 1. A Google Play developer account (one-time fee) under Kroshtan; identity verification takes days.
 2. Create the app `net.unfret.android` (the application ID can never change) with **Play App Signing**. To keep a
@@ -159,7 +167,59 @@ extractor if the extension changed (`extractor/README.md`).
    the app. Its words are `src/play/res`'s over `src/main/res`'s, and StorefrontTest fails on a Play string that
    speaks of buying. Re-check Google's current payments policy before the first submission.
 5. Make the upload key and set its four repo secrets (below); the next "Release APK" run attaches
-   `unfret-<version>.aab`, signed with it. Upload that file (the `play` build's bundle) to the internal testing track first.
+   `unfret-<version>.aab`, signed with it.
+6. The service account for the Android Publisher API and its repo secret (below), so the workflow uploads the bundle
+   itself. The first upload of an app has to be by hand in Play Console (the API can't create the app): 0.1.0 was.
+
+### Releasing on Google Play
+
+After the bundle is signed (and, on a real run, attached to the Forgejo release), the "Release APK" workflow's step
+"Release the app bundle on Google Play" runs `scripts/play-upload.py` (python3 and openssl only, through the Android
+Publisher API v3), in one *edit*:
+
+1. `edits.insert`, then reads the track and the bundles Play already has;
+2. `bundles.upload`: `unfret-<version>.aab` (Play checks its upload-key signature and reads its versionCode, which
+   must be the one in `app/build.gradle.kts`);
+3. `tracks.update`: one release on the track, named after `versionName` (`0.1.1`), with this versionCode, status
+   `completed` (to everyone once Play approves it), and release notes in `en-US`: this version's `## <version>`
+   section of CHANGELOG.md as plain text, at most 500 characters (Play's limit): paragraphs and bullets whole while
+   they fit, else a bullet's bold lead-in alone. A real run stops if CHANGELOG.md has no section for the version;
+4. `edits.commit`: the release goes to Play's review, as one sent from Play Console would. A release still in review
+   is replaced by the new one.
+
+Pick the track with the run's `play_track` input: `production` (the default), `internal` (internal testing; testers
+listed in Play Console), or `none` (no Google Play this run; upload the attached bundle by hand if needed).
+
+- **Dry run** (`dry_run` on): signs in, opens an edit, reads the track and Play's bundles, checks the versionCode is
+  new, prints the release it would make with its notes, and deletes the edit. Nothing is uploaded or committed (the
+  API has no validate-only upload, so the bundle itself is checked only on a real run).
+- **A versionCode Play has already** is never uploaded again, and nothing is retried. Already on the chosen track (a
+  re-run of a release that went out): the step says so and passes. Anywhere else (another track, or an upload whose
+  edit wasn't committed): the step fails and says to bump `versionCode` and `versionName`, or to release that bundle
+  on the track in Play Console. Any other API error fails the step; the edit is deleted, so nothing half-done stays.
+- **Not set up**: without `PLAY_SERVICE_ACCOUNT_JSON` the step says Google Play upload isn't set up and passes; the
+  bundle is attached to the Forgejo release as before, for an upload by hand. Without an app bundle (upload key not
+  set up) there is nothing to send and the step doesn't run.
+
+Re-running a failed Play step: run the workflow again with `ref` set to the tag (`v0.1.1`). The APK and bundle
+already attached stay, and the attached bundle is the one sent to Play.
+
+#### The service account
+
+`unfret-release@unfret-play.iam.gserviceaccount.com`, in the Google Cloud project `unfret-play` with the Google
+Play Android Developer API enabled, invited in Play Console (Users and permissions) with release permissions.
+Its JSON key is the repo secret `PLAY_SERVICE_ACCOUNT_JSON` (the whole file, as is); the owner keeps a
+copy in `~/kroshtan_secrets/unfret-play-service-account.json`, outside every repository. The script reads it from
+that variable (or a path in `PLAY_SERVICE_ACCOUNT_FILE`, for a local dry run), never prints it, and hands its private
+key to openssl through a file in a private temporary folder that is deleted at once. A leaked key: delete it in
+Google Cloud (IAM → Service accounts → Keys), make a new one, and replace the secret.
+
+A local check against Play, uploading nothing:
+
+```bash
+PLAY_SERVICE_ACCOUNT_FILE=~/kroshtan_secrets/unfret-play-service-account.json \
+  scripts/play-upload.py --track production --dry-run dist/release/unfret-<version>.aab
+```
 
 ### The upload key
 

@@ -138,7 +138,9 @@ signing: [docs/RELEASING.md](docs/RELEASING.md).
 Release APKs are built and signed only by the manual **Release APK** workflow (`.forgejo/workflows/release-apk.yaml`):
 built unsigned in the same pinned image (`make release-apk` gives the same bytes), signed with apksigner (v2 and v3)
 with Unfret's release key from repo secrets, verified, and attached with `SHA256SUMS` to the Forgejo release
-`v<version>`; [unfret.net/android](https://unfret.net/android) offers the download. A version with a pre-release
+`v<version>`; [unfret.net/android](https://unfret.net/android) offers the download. The same run signs the
+app bundle for Google Play with the upload key and releases it on Play (`scripts/play-upload.py`; the run's
+`play_track` input picks `production`, the default, `internal` or `none`). A version with a pre-release
 suffix, such as the first one, `0.1.0-beta.1`, is published as a beta. Every release is signed with the same key; its certificate's SHA-256 fingerprint is
 
 ```
