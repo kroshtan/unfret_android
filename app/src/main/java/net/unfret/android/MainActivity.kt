@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
             settings.consented = true
             render()
         }
-        findViewById<MaterialButton>(R.id.intro_privacy).setOnClickListener { openInBrowser("${settings.apiBase}/privacy") }
+        findViewById<MaterialButton>(R.id.intro_privacy).setOnClickListener { openInBrowser(Storefront.current.infoPage(settings.apiBase, "/privacy")) }
         findViewById<MaterialButton>(R.id.about).setOnClickListener { showAbout() }
         findViewById<MaterialButton>(R.id.check).setOnClickListener { checkLink() }
         link.setOnEditorActionListener { _, action, _ ->
@@ -598,7 +598,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.intro_title)
             .setMessage(getString(R.string.intro_body) + "\n\n" + version)
             .setPositiveButton(R.string.done, null)
-            .setNeutralButton(R.string.privacy_policy) { _, _ -> openInBrowser("${settings.apiBase}/privacy") }
+            .setNeutralButton(R.string.privacy_policy) { _, _ -> openInBrowser(Storefront.current.infoPage(settings.apiBase, "/privacy")) }
             .show()
     }
 

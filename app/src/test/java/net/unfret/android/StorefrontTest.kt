@@ -73,17 +73,25 @@ class StorefrontTest {
     }
 
     @Test
-    fun `the Play build opens only Unfret's informational pages`() {
+    fun `the Play build opens only Unfret's informational pages, as their Play variant`() {
         for (url in listOf(
-            "https://unfret.net/privacy",
-            "https://unfret.net/privacy/",
-            "https://unfret.net/objection",
-            "https://dev.unfret.net/privacy",
+            "https://unfret.net/privacy?app=play",
+            "https://unfret.net/privacy/?app=play",
+            "https://unfret.net/objection?app=play",
+            "https://unfret.net/about?app=play",
+            "https://unfret.net/terms?app=play",
+            "https://dev.unfret.net/privacy?app=play",
             "https://example.com/some/shop",
         )) {
             assertTrue(url, play.mayOpen(url))
         }
         for (url in listOf(
+            "https://unfret.net/privacy",
+            "https://unfret.net/objection",
+            "https://unfret.net/terms?app=other",
+            "https://unfret.net/about?app=play&next=/checkout",
+            "https://unfret.net/checkout?app=play",
+            "https://unfret.net/money?app=play",
             "https://unfret.net/checkout",
             "https://unfret.net/checkout?mode=topup",
             "https://unfret.net/checkout?mode=code",
@@ -94,6 +102,17 @@ class StorefrontTest {
         )) {
             assertFalse(url, play.mayOpen(url))
         }
+    }
+
+    @Test
+    fun `the Play build links the Play variant of the informational pages, the direct download the normal pages`() {
+        for (path in Storefront.INFO_PAGES) {
+            val variant = play.infoPage("https://unfret.net", path)
+            assertEquals("https://unfret.net$path?app=play", variant)
+            assertTrue(variant, play.mayOpen(variant))
+            assertEquals("https://unfret.net$path", direct.infoPage("https://unfret.net/", path))
+        }
+        assertEquals("https://dev.unfret.net/objection?app=play", play.infoPage("https://dev.unfret.net/", "/objection"))
     }
 
     @Test

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **The Google Play build opens the site's Play variant of its four pages**: the privacy policy, the objection
+  page, about and the terms open as `<page>?app=play` (`Storefront.infoPage`), which unfret.net serves without the
+  site's menu and footer and with no link to buying, the text itself unchanged. The Play build opens no other
+  version of them (`Storefront.mayOpen` wants `?app=play`), so no page it opens links to the checkout or `/money`.
+  The direct download opens the normal pages, as before.
+
 ## 0.1.0-beta.2 (2026-11-20)
 
 - **5 free deep checks on a new install**, as the browser extension gives on install. After the intro, the app makes
