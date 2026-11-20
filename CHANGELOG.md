@@ -1,12 +1,22 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 (2026-11-20)
+
+The first stable version, and the first one for Google Play: the direct download (`unfret-0.1.0.apk`, signed with
+the release key) and the app bundle for Play (`unfret-0.1.0.aab`, the `play` build, signed with the upload key) come
+from the same commit. Since 0.1.0-beta.2:
 
 - **The Google Play build opens the site's Play variant of its four pages**: the privacy policy, the objection
   page, about and the terms open as `<page>?app=play` (`Storefront.infoPage`), which unfret.net serves without the
   site's menu and footer and with no link to buying, the text itself unchanged. The Play build opens no other
   version of them (`Storefront.mayOpen` wants `?app=play`), so no page it opens links to the checkout or `/money`.
   The direct download opens the normal pages, as before.
+- **Google Play listing images** in `store/play/`: the 512 px icon, the 1024×500 feature graphic and seven phone
+  screenshots of the play build (no prices, no buying words), made on an emulator against a local mock server with
+  made-up shops (`make play-store-images`; store/play/README.md).
+- No longer a beta: the About screen drops the beta sentence, the Forgejo release is a normal one and its
+  `release.json` says `"prerelease": false`.
+- `versionCode` 3, `versionName` 0.1.0.
 
 ## 0.1.0-beta.2 (2026-11-20)
 

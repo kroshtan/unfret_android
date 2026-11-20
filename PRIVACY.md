@@ -49,7 +49,7 @@ you switch from the pass the app made to another one of yours, its free checks l
 (`POST /v1/keys/move-free-checks`, with the old pass).
 
 When you save a pass, and when the home screen shows your remaining checks, the app asks `unfret.net` for the
-pass's balance (with the pass). Requests name the app and its version (`Unfret-Android/0.1.0-beta.2`), not your phone.
+pass's balance (with the pass). Requests name the app and its version (`Unfret-Android/0.1.0`), not your phone.
 
 A result that found the same product on another shop shows both photos as small thumbnails, which the app loads
 from `unfret.net` itself (`/v1/images/…`, without your pass): your phone never contacts the other shop.
