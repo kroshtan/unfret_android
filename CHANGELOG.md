@@ -27,9 +27,16 @@
   left (`POST /v1/keys/move-free-checks`). On a first launch the intro comes first, and a pass from a link means no
   free pass is made. The pass is never logged, saved outside the sealed store, or kept in Recents. Verification
   needs unfret.net to serve `/.well-known/assetlinks.json` (the backend's next deploy).
-- **Quick checks once the deep checks are used up**: with no checks left, or only free ones while today's are all
-  used ("Free deep checks are back tomorrow. Quick checks still work."), the check screen's button becomes **Quick
-  check (free)** (`"tier": "quick"`), as in the extension.
+- **The free quick check, always on offer** (the extension's #58): under "Check this page" (a deep check: free checks
+  first, then bought ones) a secondary **Quick check (free)**, "Reads this page only, by Unfret's rules.", before
+  every check. With no checks left, or only free ones while today's are all used ("Free deep checks are back
+  tomorrow. Quick checks still work."), the main button is the quick check and it isn't offered twice; the check
+  screen asks for the balance when the page opens. A deep check the server refuses for want of checks becomes a
+  quick one, and the result says why ("You have no checks left, so here's a quick check instead."). Quick checks
+  work without a pass (`"tier": "quick"`, no `Authorization`), so the home screen opens a link without one. The
+  per-minute limit says "Too many quick checks in a minute; wait a moment. No check was used." After a quick result
+  the deep-check suggestion works as before (without a pass it leads to the home screen's free checks). Real
+  buttons, 48dp, in reading order; the quick button's description includes its hint.
 - The intro says the app makes its own pass and what Android's backup keeps; it is asked again once (consent
   version 2). PRIVACY.md says the same.
 - `versionCode` 2, `versionName` 0.1.0-beta.2.

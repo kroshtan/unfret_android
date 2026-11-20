@@ -54,7 +54,8 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         wrongResult.visibility = if (reportable) View.VISIBLE else View.GONE
     }
 
-    fun show(result: AnalysisResult) {
+    /** [note]: why this is a quick check when a deep one was asked for (no checks left, or today's free ones used). */
+    fun show(result: AnalysisResult, note: String? = null) {
         val band = result.band
         val (strong, soft) = colours(band)
         card.setCardBackgroundColor(ContextCompat.getColor(context, soft))
@@ -70,10 +71,12 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         headline.text = verdict?.headline?.takeIf { it.isNotEmpty() } ?: result.explanation
         headline.visibility = if (headline.text.isNullOrEmpty()) View.GONE else View.VISIBLE
         // What the check cost, as a sentence: right under the headline when no check was used (good news, easy to
-        // miss under the reasons); at the end when one was.
+        // miss under the reasons); at the end when one was. A quick check that was asked for as a deep one says why
+        // first ([note]).
         val charge = chargeLine(result)
-        noCheck.text = charge
-        noCheck.visibility = if (charge != null && result.chargeFree) View.VISIBLE else View.GONE
+        val top = listOfNotNull(note, charge?.takeIf { result.chargeFree })
+        noCheck.text = top.joinToString(" ")
+        noCheck.visibility = if (top.isEmpty()) View.GONE else View.VISIBLE
         setReportable(result.reportToken != null && result.assessed)
 
         sections.removeAllViews()
