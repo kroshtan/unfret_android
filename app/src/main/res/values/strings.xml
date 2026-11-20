@@ -131,9 +131,15 @@
     <string name="quick_because_paused">Free deep checks are back tomorrow. Quick checks still work. Here\'s a quick check meanwhile.</string>
     <string name="reading_page">Reading the page on your phone…</string>
     <string name="sending">Checking…</string>
+    <!-- An older server's progress: every step of the analysis -->
     <plurals name="steps_done">
         <item quantity="one">Checking… %d step done</item>
         <item quantity="other">Checking… %d steps done</item>
+    </plurals>
+    <!-- The checks done so far: the unit and, at the end, the number of the result's "What we checked: 7 checks" -->
+    <plurals name="checks_done">
+        <item quantity="one">Checking… %d check done</item>
+        <item quantity="other">Checking… %d checks done</item>
     </plurals>
     <string name="read_failed">Couldn\'t read this page. Wait until it has loaded and try again.</string>
     <string name="try_again">Try again</string>
@@ -159,8 +165,8 @@
     <string name="band_careful">Think twice</string>
     <string name="band_junk_or_scam">Serious concerns</string>
     <!-- A verdict below "Looks fine" always names a reason: the server's catalogue reason, when a result has none -->
-    <string name="reason_overall_title">Several small signals</string>
-    <string name="reason_overall_detail">No single big problem, but several smaller signals together lowered the score.</string>
+    <string name="reason_overall_title">Nothing clear-cut</string>
+    <string name="reason_overall_detail">Nothing on the page stands out by itself, but taken together it scored lower than most.</string>
     <string name="not_assessed">This page couldn\'t be checked</string>
     <string name="no_check_used">No check was used.</string>
     <string name="reasons_title">What we noticed</string>

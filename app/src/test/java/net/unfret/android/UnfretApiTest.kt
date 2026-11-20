@@ -54,23 +54,26 @@ class UnfretApiTest {
             : keep-alive
 
             event: step
-            data: {"skill": "classify", "page_type": "product", "findings": []}
+            data: {"skill": "classify", "page_type": "product", "findings": [], "check": false}
 
             event: step
-            data: {"skill": "domain_age",
+            data: {"skill": "domain_age", "check": true,
             data:  "findings": [{"type": "new_domain", "evidence": "3 weeks"}]}
+
+            event: step
+            data: {"skill": "triage", "findings": []}
 
             event: result
             data: {"score": 31, "explanation": "Several things don't add up.", "charged": true, "verdict": ${JSONObject(verdict)}}
 
         """.trimIndent()
         val transport = FakeTransport(200, stream)
-        val steps = mutableListOf<String>()
+        val steps = mutableListOf<Step>()
         val body = JSONObject("""{"url":"https://shop.test/p","page_facts":{"url":"https://shop.test/p"}}""")
 
         val result = UnfretApi(UnfretApi.DEV, key, transport).analyze(body) { steps += it }
 
-        assertEquals(listOf("classify", "domain_age"), steps)
+        assertEquals(listOf(Step("classify", false), Step("domain_age", true), Step("triage", null)), steps)
         val request = transport.sent.single()
         assertEquals("POST", request.method)
         assertEquals("https://dev.unfret.net/v1/analyze/stream", request.url)

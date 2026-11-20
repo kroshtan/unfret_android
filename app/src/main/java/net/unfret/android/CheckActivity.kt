@@ -345,16 +345,23 @@ class CheckActivity : AppCompatActivity() {
         val pass = key
         val asQuick = quick || pass == null
         background.execute {
-            var steps = 0
+            var progress = Progress()
             var request: JSONObject? = null
             var refused: Problem? = null
             val outcome = try {
                 val api = UnfretApi(base, pass, HttpUrlTransport())
-                val onStep: (String) -> Unit = {
-                    steps++
-                    val done = steps
+                val onStep: (Step) -> Unit = { step ->
+                    progress.add(step)
+                    val checks = progress.checks
+                    val steps = progress.steps
                     runOnUiThread {
-                        if (!isDestroyed) status.text = resources.getQuantityString(R.plurals.steps_done, done, done)
+                        if (!isDestroyed) {
+                            status.text = when {
+                                checks == null -> resources.getQuantityString(R.plurals.steps_done, steps, steps)
+                                checks == 0 -> getString(R.string.sending)
+                                else -> resources.getQuantityString(R.plurals.checks_done, checks, checks)
+                            }
+                        }
                     }
                 }
                 var body = AnalyzeRequest.fromExtraction(extraction, asQuick)
@@ -368,6 +375,7 @@ class CheckActivity : AppCompatActivity() {
                     refused = problem
                     body = AnalyzeRequest.fromExtraction(extraction, quick = true)
                     request = body
+                    progress = Progress() // the quick check's own checks, as its result counts them
                     api.analyze(body, onStep)
                 }
                 Result.success(result)

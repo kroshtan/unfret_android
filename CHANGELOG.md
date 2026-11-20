@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Progress counts checks, as the result does.** While checking, the app said "Checking… 15 steps done" and the
+  result then said "What we checked: 9 checks in 4 areas": the progress counted every step of the analysis (reading
+  the page, classifying it, triage) and the result only the checks. With a server that marks the steps that are checks
+  (`check` on the stream's `step` events), the line now reads "Checking… 9 checks done", ending on the result's
+  number (`Progress`); an older server's steps are still counted as steps. A deep check that falls back to a quick
+  one counts the quick check's checks from zero.
+- The reason shown for a result without any (an older server's) is the server's own "overall" reason in its new
+  words, "Nothing clear-cut", instead of "Several small signals". The server now counts and names the small signs
+  itself ("Two small signs: …"), and marks their areas in "What we checked".
+
 ## 0.1.0 (2026-11-20)
 
 The first stable version, and the first one for Google Play: the direct download (`unfret-0.1.0.apk`, signed with

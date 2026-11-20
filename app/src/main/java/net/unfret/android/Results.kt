@@ -159,7 +159,7 @@ data class AnalysisResult(
     val positivesFirst: Boolean get() = verdict?.band == Band.RELIABLE
 
     /**
-     * Whether to show the catalogue's "Several small signals" as the reason: a verdict below "Looks fine" always names
+     * Whether to show the catalogue's "overall" reason ("Nothing clear-cut"): a verdict below "Looks fine" always names
      * one. The server always sends one; a result without any (an older server's, without a verdict) doesn't.
      */
     val needsOverallReason: Boolean get() = band.let { it != null && it != Band.RELIABLE } && reasonsToShow.isEmpty()
