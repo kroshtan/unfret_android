@@ -478,10 +478,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
         linkLayout.error = null
-        if (key == null) {
-            askForKey()
-            return
-        }
+        // Without a pass the check screen offers the free quick check.
         pending.visibility = View.GONE
         startActivity(Intent(this, CheckActivity::class.java).putExtra(Intent.EXTRA_TEXT, url))
     }

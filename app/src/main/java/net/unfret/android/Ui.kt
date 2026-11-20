@@ -40,6 +40,7 @@ fun Problem.message(): Int = when (this) {
     Problem.BAD_KEY -> R.string.problem_bad_key
     Problem.NO_CHECKS -> R.string.problem_no_checks
     Problem.FREE_PAUSED -> R.string.problem_free_paused
+    Problem.TOO_MANY -> R.string.problem_too_many
     Problem.FAILED -> R.string.problem_failed
     Problem.OFFLINE -> R.string.problem_offline
 }

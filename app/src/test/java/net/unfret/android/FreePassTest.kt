@@ -120,7 +120,7 @@ class FreePassTest {
             ),
         )
         val (refused, v2) = attempt(tooMany)
-        assertEquals(FreePass.Outcome.Failed(Problem.FAILED), refused)
+        assertEquals(FreePass.Outcome.Failed(Problem.TOO_MANY), refused)
         assertNull(v2.load())
 
         val (off, _) = attempt(RoutedTransport(mapOf("GET /v1/keys/challenge" to (503 to """{"detail":"API keys are not available yet."}"""))))

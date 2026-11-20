@@ -50,7 +50,7 @@ see [Building](#building)) and turn on the app's dev-server switch.
 
 ## Privacy, in plain words
 
-- **Nothing is read until you tap Check this page.** Loading a page sends nothing to Unfret.
+- **Nothing is read until you tap Check this page (or Quick check).** Loading a page sends nothing to Unfret.
 - **The page is read on your phone**, by the same code as the Unfret browser extension
   ([extractor/](extractor/README.md)): product facts and the visible text, from a copy of the page, and, to recognise
   a shop's apps, the names in the page's code (class names, ids, data attribute names; never what they hold) and the
@@ -88,7 +88,7 @@ asks; a gift code is redeemed in the app instead ([docs/RELEASING.md](docs/RELEA
 ```
 share sheet / pasted link ─► CheckActivity (process :check)
     WebView, visible: the page over the phone's connection (HTTPS only; JavaScript on for this page only)
-    "Check this page" ─► evaluateJavascript(assets/unfret-extract.js) ─► poll ─► {facts, text}
+    "Check this page" / "Quick check (free)" ─► evaluateJavascript(assets/unfret-extract.js) ─► poll ─► {facts, text}
                      ─► POST https://unfret.net/v1/analyze/stream  (Bearer ufk_…)  ─► steps ─► verdict
     close ─► WebView data deleted, process ends
 ```

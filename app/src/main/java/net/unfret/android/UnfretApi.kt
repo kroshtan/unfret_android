@@ -59,15 +59,16 @@ fun interface Transport {
 
 /**
  * The Unfret API as the app uses it: remaining checks and the streamed analysis, with the user's API key as
- * `Authorization: Bearer ufk_…`. Requests carry nothing else about the user or the phone.
+ * `Authorization: Bearer ufk_…`. Requests carry nothing else about the user or the phone. Without a key ([key] null)
+ * only the free quick check can be asked for: it goes without `Authorization`.
  */
-class UnfretApi(private val base: String, private val key: String, private val transport: Transport) {
+class UnfretApi(private val base: String, private val key: String?, private val transport: Transport) {
     init {
         require(base in BASES) { "not an Unfret server: $base" }
     }
 
     private fun headers(json: Boolean): Map<String, String> = buildMap {
-        put("Authorization", "Bearer $key")
+        if (key != null) put("Authorization", "Bearer $key")
         // The app is in English, like the extension; the API answers in English anyway.
         put("Accept-Language", "en")
         put("User-Agent", USER_AGENT)
@@ -86,6 +87,7 @@ class UnfretApi(private val base: String, private val key: String, private val t
      * result. Throws [ApiError] for an error answer or event, IOException when the connection fails.
      */
     fun analyze(body: JSONObject, onStep: (String) -> Unit = {}): AnalysisResult {
+        require(key != null || body.optString("tier") == "quick") { "a deep check needs a pass" }
         val request = HttpRequest(
             "POST",
             "$base/v1/analyze/stream",

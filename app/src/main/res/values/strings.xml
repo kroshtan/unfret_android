@@ -124,6 +124,11 @@
     <string name="page_ready">When the page shows the product or ad, tap Check this page. It uses one check.</string>
     <string name="check_page">Check this page</string>
     <string name="quick_check">Quick check (free)</string>
+    <string name="quick_check_described">Quick check, free. Reads this page only, by Unfret\'s rules.</string>
+    <string name="quick_hint">Reads this page only, by Unfret\'s rules.</string>
+    <string name="page_ready_no_pass">Quick checks are free, without a pass. For a deep check, get your free checks on the home screen.</string>
+    <string name="quick_because_no_checks">You have no checks left, so here\'s a quick check instead.</string>
+    <string name="quick_because_paused">Free deep checks are back tomorrow. Quick checks still work. Here\'s a quick check meanwhile.</string>
     <string name="reading_page">Reading the page on your phone…</string>
     <string name="sending">Checking…</string>
     <plurals name="steps_done">
@@ -141,6 +146,7 @@
     <string name="problem_bad_key">Unfret doesn\'t know your pass. Check it on the home screen.</string>
     <string name="problem_no_checks">You have no checks left. Quick checks are free: they read this page only.</string>
     <string name="problem_free_paused">Free deep checks are back tomorrow. Quick checks still work.</string>
+    <string name="problem_too_many">Too many quick checks in a minute; wait a moment. No check was used.</string>
     <string name="problem_failed">The check failed. No check was used.</string>
     <string name="problem_offline">Can\'t reach Unfret. Check your connection and try again.</string>
     <string name="open_home">Back to the home screen</string>

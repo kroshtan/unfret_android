@@ -14,6 +14,9 @@ enum class Problem {
     /** Only free checks left, and today's free deep checks are all used: back tomorrow (quick checks work). */
     FREE_PAUSED,
 
+    /** Too many quick checks in a minute (429): wait a moment. Nothing was used. */
+    TOO_MANY,
+
     /** The check failed on the server's side; it gives the check back. */
     FAILED,
 
@@ -28,6 +31,7 @@ enum class Problem {
             error.badKey -> BAD_KEY
             error.needsChecks -> NO_CHECKS
             error.freePaused -> FREE_PAUSED
+            error.status == 429 -> TOO_MANY
             else -> FAILED
         }
     }
