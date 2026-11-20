@@ -22,12 +22,9 @@ out="${2:?usage: sign-release.sh <unsigned.apk> <out dir>}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 bt="${ANDROID_HOME:?ANDROID_HOME is not set (run this in the Android image)}/build-tools/36.0.0"
 
-# The permissions unfret.net/android explains (unfret_backend: unfret.android_release.PERMISSIONS). A new one needs
-# its explanation there first.
-allowed=(
-  android.permission.INTERNET
-  net.unfret.android.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
-)
+# The permissions unfret.net/android explains (unfret_backend: unfret.android_release.PERMISSIONS), in
+# scripts/allowed-permissions. A new one needs its explanation there first.
+mapfile -t allowed < <(grep -v -e '^#' -e '^$' "$root/scripts/allowed-permissions")
 
 fail() { echo "::error::$*" >&2; exit 1; }
 
@@ -54,7 +51,7 @@ min_sdk="$(sed -n "s/^minSdkVersion:'\([0-9]*\)'$/\1/p" <<< "$badging")"
 mapfile -t permissions < <("$bt/aapt2" dump permissions "$unsigned" | sed -n "s/^uses-permission: name='\([^']*\)'.*/\1/p")
 for permission in "${permissions[@]}"; do
   printf '%s\n' "${allowed[@]}" | grep -qxF "$permission" \
-    || fail "the APK asks for $permission: explain it on unfret.net/android (unfret_backend's PERMISSIONS) and allow it here"
+    || fail "the APK asks for $permission: explain it on unfret.net/android (unfret_backend's PERMISSIONS) and allow it in scripts/allowed-permissions"
 done
 unsigned_sha256="$(sha256sum "$unsigned" | cut -d' ' -f1)"
 

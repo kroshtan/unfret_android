@@ -20,9 +20,17 @@ name: Release APK
 # A versionName with a pre-release suffix (0.1.0-beta.1, tag v0.1.0-beta.1) is a beta: its Forgejo release is marked
 # as a pre-release and its release.json says "prerelease": true, which unfret.net/android shows as "Beta".
 #
+# It also builds the app bundle (AAB) for Google Play, `bundle<BUNDLE_BUILD_TYPE>` below, and scripts/sign-bundle.sh
+# checks it the same way, signs it with jarsigner with the Play upload key (never the release key: it refuses a bundle
+# signed with the release key's certificate) and adds unfret-<version>.aab to SHA256SUMS. It is attached next to the
+# APK, for uploading to Google Play by hand; it is not for a direct install (docs/RELEASING.md, "Google Play").
+#
 # Repo secrets (docs/RELEASING.md): ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and
-# ANDROID_KEY_PASSWORD. They reach only the signing step, on the deploy runner (never the public one). While any is
-# missing the run builds and checks the unsigned APK, says signing isn't set up, and passes.
+# ANDROID_KEY_PASSWORD for the APK; ANDROID_UPLOAD_KEYSTORE_B64, ANDROID_UPLOAD_KEYSTORE_PASSWORD,
+# ANDROID_UPLOAD_KEY_ALIAS and ANDROID_UPLOAD_KEY_PASSWORD for the app bundle. They reach only the signing steps, on
+# the deploy runner (never the public one). While any of the first four is missing the run builds and checks the
+# unsigned APK, says signing isn't set up, and passes; while any of the upload four is missing it says so and skips
+# the app bundle altogether (no build, no signature, nothing attached), and the APK goes ahead as before.
 on:
   workflow_dispatch:
     inputs:
@@ -40,6 +48,13 @@ on:
 concurrency:
   group: release-unfret-android
   cancel-in-progress: false
+
+env:
+  # The build type whose app bundle goes to Google Play: Gradle's task is bundle<Type> (bundleRelease) and its output
+  # app/build/outputs/bundle/<type>/app-<type>.aab. The one place to change it: to `play` once that build type exists
+  # (the Play build without prices or the checkout link), which makes it bundlePlay and app-play.aab. The Makefile's
+  # BUNDLE_BUILD_TYPE (`make release-bundle`) names the same; keep them in step.
+  BUNDLE_BUILD_TYPE: release
 
 jobs:
   release-apk:
@@ -66,6 +81,7 @@ jobs:
           API: ${{ forgejo.server_url }}/api/v1/repos/${{ forgejo.repository }}
           # Whether the signing secrets are set, never their values.
           HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+          HAS_UPLOAD_KEY: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 != '' && secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD != '' && secrets.ANDROID_UPLOAD_KEY_ALIAS != '' && secrets.ANDROID_UPLOAD_KEY_PASSWORD != '' }}
         run: |
           set -euo pipefail
           dry="$([[ "$DRY_RUN" == true ]] && echo true || echo false)"
@@ -154,6 +170,12 @@ jobs:
             echo "::notice::Release signing isn't set up (repo secrets ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD," \
               "ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD; docs/RELEASING.md): building and checking the unsigned APK only."
           fi
+          bundle="$HAS_UPLOAD_KEY"
+          if [[ "$bundle" != true ]]; then
+            echo "::notice::The Google Play upload key isn't set up (repo secrets ANDROID_UPLOAD_KEYSTORE_B64," \
+              "ANDROID_UPLOAD_KEYSTORE_PASSWORD, ANDROID_UPLOAD_KEY_ALIAS, ANDROID_UPLOAD_KEY_PASSWORD;" \
+              "docs/RELEASING.md): no app bundle this run."
+          fi
           {
             echo "sha=$sha"
             echo "tag=$tag"
@@ -161,8 +183,9 @@ jobs:
             echo "prerelease=$prerelease"
             echo "dry_run=$dry"
             echo "signing=$signing"
+            echo "bundle=$bundle"
           } >> "$FORGEJO_OUTPUT"
-          echo "Releasing $tag ($sha; beta: $prerelease; dry run: $dry; signing: $signing)"
+          echo "Releasing $tag ($sha; beta: $prerelease; dry run: $dry; signing: $signing; app bundle: $bundle)"
       - name: Build the release APK (unsigned)
         run: |
           set -euo pipefail
@@ -177,6 +200,21 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: scripts/sign-release.sh app/build/outputs/apk/release/app-release-unsigned.apk dist/release
+      - name: Build the app bundle for Google Play (unsigned)
+        if: steps.release.outputs.bundle == 'true'
+        run: |
+          set -euo pipefail
+          ./gradlew --console=plain "bundle${BUNDLE_BUILD_TYPE^}"
+          sha256sum "app/build/outputs/bundle/$BUNDLE_BUILD_TYPE/app-$BUNDLE_BUILD_TYPE.aab"
+      # After the APK's step: that one writes SHA256SUMS afresh, this one adds the bundle's line.
+      - name: Sign and verify the app bundle
+        if: steps.release.outputs.bundle == 'true'
+        env:
+          ANDROID_UPLOAD_KEYSTORE_B64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_B64 }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: scripts/sign-bundle.sh "app/build/outputs/bundle/$BUNDLE_BUILD_TYPE/app-$BUNDLE_BUILD_TYPE.aab" dist/release
       - name: Attach it to the release
         if: steps.release.outputs.signing == 'true' && steps.release.outputs.dry_run != 'true'
         env:
@@ -184,6 +222,7 @@ jobs:
           SHA: ${{ steps.release.outputs.sha }}
           VERSION: ${{ steps.release.outputs.version }}
           PRERELEASE: ${{ steps.release.outputs.prerelease }}
+          BUNDLE: ${{ steps.release.outputs.bundle }}
           TOKEN: ${{ forgejo.token }}
           API: ${{ forgejo.server_url }}/api/v1/repos/${{ forgejo.repository }}
           SERVER: ${{ forgejo.server_url }}
@@ -193,6 +232,7 @@ jobs:
           auth="Authorization: token $TOKEN"
           field() { python3 -I -c 'import json, sys; print(json.load(sys.stdin)[sys.argv[1]])' "$1"; }
           apk="unfret-$VERSION.apk"
+          aab="unfret-$VERSION.aab"
           # Creating the release creates its tag on $SHA when the tag doesn't exist yet.
           code="$(curl -sS -o release.json.api -w '%{http_code}' -H "$auth" "$API/releases/tags/$TAG")"
           if [[ "$code" == 200 ]]; then
@@ -207,7 +247,9 @@ jobs:
           else
             body="$(DIGEST="$(field sha256 < dist/release/release.json)" \
               CERT="$(field cert_sha256 < dist/release/release.json)" \
-              UNSIGNED="$(field unsigned_sha256 < dist/release/release.json)" python3 -I - <<'PY'
+              UNSIGNED="$(field unsigned_sha256 < dist/release/release.json)" \
+              AAB_DIGEST="$(if [[ "$BUNDLE" == true ]]; then sed -n "s/  $aab\$//p" dist/release/SHA256SUMS; fi)" \
+              python3 -I - <<'PY'
           import json, os
 
           e = os.environ
@@ -225,7 +267,13 @@ jobs:
                   f"- `unfret-{v}.apk` SHA-256: `{e['DIGEST']}` (also in SHA256SUMS)\n"
                   f"- Signing certificate SHA-256: `{e['CERT']}` (`apksigner verify --print-certs`)\n"
                   f"- Built from {e['SHA']}: `make release-apk` at this tag gives the unsigned APK, SHA-256 "
-                  f"`{e['UNSIGNED']}`, which was then signed.\n\n"
+                  f"`{e['UNSIGNED']}`, which was then signed.\n"
+                  + (
+                      f"- `unfret-{v}.aab` SHA-256: `{e['AAB_DIGEST']}`: the app bundle for Google Play, signed with "
+                      "the upload key; not for a direct install (Play serves APKs signed with the release key).\n"
+                      if e["AAB_DIGEST"] else ""
+                  )
+                  + "\n"
                   "release.json holds these facts for unfret.net/android. What changed: CHANGELOG.md."
               ),
           }))
@@ -235,9 +283,10 @@ jobs:
             echo "created release $TAG"
           fi
           curl -fsS -H "$auth" "$API/releases/$id/assets" > assets.json
-          url_of() { python3 -I -c '
+          asset() { python3 -I -c '
           import json, sys
-          print(next((a["browser_download_url"] for a in json.load(open("assets.json")) if a["name"] == sys.argv[1]), ""))' "$1"; }
+          print(next((a[sys.argv[2]] for a in json.load(open("assets.json")) if a["name"] == sys.argv[1]), ""))' "$1" "$2"; }
+          url_of() { asset "$1" browser_download_url; }
           existing="$(url_of "$apk")"
           if [[ -n "$existing" ]]; then
             # A published APK is never replaced: the same file again is fine, a different one is a mistake.
@@ -246,7 +295,28 @@ jobs:
               || { echo "::error::$TAG already has a different $apk: bump the version for a new build"; exit 1; }
             echo "$apk is already attached (the same file)"
           fi
-          for name in "$apk" SHA256SUMS release.json; do
+          names=("$apk" SHA256SUMS release.json)
+          if [[ "$BUNDLE" == true ]]; then
+            # The app bundle's signature (jarsigner's) differs on every run, so a bundle already attached stays, and
+            # SHA256SUMS names that one. One attached now to a release whose SHA256SUMS predates it replaces that
+            # SHA256SUMS: the APK's line is the same (checked above), the new one adds the bundle's.
+            existing_aab="$(url_of "$aab")"
+            if [[ -n "$existing_aab" ]]; then
+              curl -fsSL -H "$auth" -o "dist/release/$aab" "$existing_aab"
+              { grep -v "  $aab\$" dist/release/SHA256SUMS || true; (cd dist/release && sha256sum "$aab"); } > sums.new
+              cat sums.new > dist/release/SHA256SUMS
+              echo "$aab is already attached (kept: a new signature would differ only in its timestamps)"
+            else
+              sums="$(asset SHA256SUMS id)"
+              if [[ -n "$sums" ]]; then
+                curl -fsS -o /dev/null -X DELETE -H "$auth" "$API/releases/$id/assets/$sums"
+                curl -fsS -H "$auth" "$API/releases/$id/assets" > assets.json
+                echo "removed the SHA256SUMS without $aab"
+              fi
+              names=("$aab" "${names[@]}")
+            fi
+          fi
+          for name in "${names[@]}"; do
             if [[ -n "$(url_of "$name")" ]]; then
               echo "$name is already attached"
               continue
@@ -257,3 +327,6 @@ jobs:
           done
           echo "::notice::Unfret for Android $VERSION is attached to $SERVER/$REPO/releases/tag/$TAG. Next: in" \
             "unfret_backend, make android-release TAG=$TAG and open a pull request (docs/RELEASING.md)."
+          if [[ "$BUNDLE" == true ]]; then
+            echo "::notice::For Google Play: upload $aab from that release in Play Console (docs/RELEASING.md)."
+          fi

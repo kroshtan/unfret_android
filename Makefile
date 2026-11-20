@@ -16,8 +16,13 @@ NODE := $(DOCKER_RUN) -w /work/extractor $(NODE_IMAGE)
 
 APK := app/build/outputs/apk/debug/app-debug.apk
 RELEASE_APK := app/build/outputs/apk/release/app-release-unsigned.apk
+# The build type whose app bundle goes to Google Play: the same as BUNDLE_BUILD_TYPE in
+# .forgejo/workflows/release-apk.yaml (keep them in step). Gradle's bundle<Type> builds it, unsigned.
+BUNDLE_BUILD_TYPE := release
+BUNDLE_TASK := bundle$(shell printf %s '$(BUNDLE_BUILD_TYPE)' | sed 's/^./\U&/')
+RELEASE_AAB := app/build/outputs/bundle/$(BUNDLE_BUILD_TYPE)/app-$(BUNDLE_BUILD_TYPE).aab
 
-.PHONY: build apk release-apk test lint check extractor extractor-check extractor-test extractor-deps clean
+.PHONY: build apk release-apk release-bundle test lint check extractor extractor-check extractor-test extractor-deps clean
 
 ## build: compile the debug app
 build:
@@ -36,6 +41,14 @@ release-apk:
 	@mkdir -p dist
 	@version="$$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"; \
 	  cp $(RELEASE_APK) "dist/unfret-$$version-unsigned.apk" && sha256sum "dist/unfret-$$version-unsigned.apk"
+
+## release-bundle: the app bundle for Google Play, unsigned, at dist/unfret-<version>-unsigned.aab: what the release
+## workflow signs with the upload key (scripts/sign-bundle.sh; docs/RELEASING.md, "Google Play")
+release-bundle:
+	$(GRADLE) $(BUNDLE_TASK)
+	@mkdir -p dist
+	@version="$$(sed -n 's/.*versionName = "\(.*\)"/\1/p' app/build.gradle.kts)"; \
+	  cp $(RELEASE_AAB) "dist/unfret-$$version-unsigned.aab" && sha256sum "dist/unfret-$$version-unsigned.aab"
 
 ## test: unit tests (JVM) and the bundled extractor over the extension's fixtures (node + jsdom)
 test: extractor-test

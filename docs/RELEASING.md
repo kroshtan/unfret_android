@@ -8,6 +8,10 @@ Two kinds of build:
 - **Release** (the "Release APK" workflow): built unsigned by Gradle (`make release-apk`), signed with Unfret's
   release key by `scripts/sign-release.sh` (apksigner, v2 and v3 schemes), always talking to unfret.net. It is
   attached to a Forgejo release and offered on [unfret.net/android](https://unfret.net/android).
+- **App bundle for Google Play** (the same workflow, once the upload key is set up): the same release build as an
+  Android App Bundle, built unsigned by Gradle (`make release-bundle`), signed with the Play *upload* key by
+  `scripts/sign-bundle.sh` (jarsigner), and attached to the same Forgejo release for uploading to Play by hand. Not
+  for a direct install: Play serves APKs it builds from it, signed with the release key ("Google Play" below).
 
 ## Versions and betas
 
@@ -73,11 +77,17 @@ Repo secrets (Settings → Actions → Secrets):
 | `ANDROID_KEYSTORE_PASSWORD` | the store password |
 | `ANDROID_KEY_ALIAS` | `unfret` |
 | `ANDROID_KEY_PASSWORD` | the key's password (for PKCS12, the store password) |
+| `ANDROID_UPLOAD_KEYSTORE_B64` | the Play upload keystore, base64: `base64 -w0 unfret-android-upload.p12` ("Google Play" below) |
+| `ANDROID_UPLOAD_KEYSTORE_PASSWORD` | its store password |
+| `ANDROID_UPLOAD_KEY_ALIAS` | `upload` |
+| `ANDROID_UPLOAD_KEY_PASSWORD` | its key's password (for PKCS12, the store password) |
 
-They reach only the signing step, which runs on the deploy runner (`kroshtan-deploy`), never the public one. The
-keystore is written to a private temporary folder and deleted when the step ends; the passwords reach apksigner
-through the environment (`--ks-pass env:…`), never a command line. While a secret is missing the workflow builds and
-checks the unsigned APK, says signing isn't set up, and passes.
+They reach only the signing steps, which run on the deploy runner (`kroshtan-deploy`), never the public one. A
+keystore is written to a private temporary folder and deleted when the step ends; the passwords reach apksigner and
+jarsigner through the environment (`--ks-pass env:…`, `-storepass:env …`), never a command line. While one of the
+first four is missing the workflow builds and checks the unsigned APK, says signing isn't set up, and passes. While
+one of the `ANDROID_UPLOAD_*` four is missing it says the upload key isn't set up and skips the app bundle
+altogether (no build, no signature, nothing attached); the APK is released as before.
 
 Actions → **Release APK** → Run workflow, with `ref` `main` (or an existing tag such as `v0.1.0`, to build it again)
 and `dry_run` on first. It:
@@ -86,14 +96,22 @@ and `dry_run` on first. It:
    another commit, and that `versionCode` is above every published release's, betas included;
 2. builds the release APK unsigned (`assembleRelease`) in CI's pinned image;
 3. runs `scripts/sign-release.sh`: the APK is `net.unfret.android` at this version and not debuggable, asks for no
-   permission beyond INTERNET and the support library's own (a new one needs its explanation on unfret.net/android
-   first); zipalign, apksigner sign (v2 + v3, no v1 or v4), `apksigner verify --print-certs` (both schemes, one
-   signer, the pinned certificate); writes `unfret-<version>.apk`, `SHA256SUMS` and `release.json` (version,
-   versionCode, commit, size, SHA-256, certificate, minSdk, permissions, date, the unsigned APK's SHA-256, and
-   `prerelease`);
-4. without `dry_run`: creates the release `v<version>` (and its tag) if needed, as a pre-release for a beta, and
-   attaches the three files. An APK
-   already attached is never replaced: the same file again is skipped, a different one stops the run.
+   permission beyond those in `scripts/allowed-permissions` (INTERNET and the support library's own; a new one needs
+   its explanation on unfret.net/android first); zipalign, apksigner sign (v2 + v3, no v1 or v4),
+   `apksigner verify --print-certs` (both schemes, one signer, the pinned certificate); writes
+   `unfret-<version>.apk`, `SHA256SUMS` and `release.json` (version, versionCode, commit, size, SHA-256,
+   certificate, minSdk, permissions, date, the unsigned APK's SHA-256, and `prerelease`);
+4. with the upload key set up: builds the app bundle unsigned (`bundle<Type>` of the workflow's `BUNDLE_BUILD_TYPE`,
+   below) and runs `scripts/sign-bundle.sh`: the same checks of package, version, not debuggable and
+   `scripts/allowed-permissions` (on the bundle's base module, through aapt2); jarsigner (SHA256withRSA) with the
+   upload key; `jarsigner -verify` (every entry signed, one signer); refuses a bundle signed with the release key's
+   certificate (`release-cert.sha256`); prints the upload certificate's SHA-256 (never the key); writes
+   `unfret-<version>.aab` and adds its line to `SHA256SUMS`;
+5. without `dry_run`: creates the release `v<version>` (and its tag) if needed, as a pre-release for a beta, and
+   attaches the files (and the app bundle when there is one). An APK already attached is never replaced: the same
+   file again is skipped, a different one stops the run. An app bundle already attached stays (jarsigner's signature
+   differs on every run, in its timestamps), and `SHA256SUMS` names that one; a bundle attached to a release that
+   didn't have one yet replaces its `SHA256SUMS` with one that lists both.
 
 ### Reproducible
 
@@ -137,5 +155,35 @@ extractor if the extension changed (`extractor/README.md`).
 4. Payments: the app sells nothing and shows no prices; checks are bought on the website (no Play Billing needed).
    Don't add in-app links or wording that urge buying outside Play beyond "Get checks" opening the website;
    re-check Google's current payments policy before the first submission.
-5. Upload an Android App Bundle (`./gradlew bundleRelease`, signed with the same key) to the internal testing track
-   first.
+5. Make the upload key and set its four repo secrets (below); the next "Release APK" run attaches
+   `unfret-<version>.aab`, signed with it. Upload that file to the internal testing track first.
+
+### The upload key
+
+Play checks every app bundle uploaded against the upload key's certificate, then signs the APKs it serves with the
+app signing key (the release key above). So the upload key is a separate key: if it is lost or leaks, Play Console
+can reset it (the app's signature on phones doesn't change). `scripts/sign-bundle.sh` refuses a bundle signed with
+the release key's certificate. Like the release key it is made by the owner, never by CI or an assistant, and never
+committed:
+
+```bash
+# On the owner's machine, never in a checkout. Play asks for an RSA upload key valid past 22 October 2033.
+keytool -genkeypair -v -storetype PKCS12 -keystore ~/kroshtan_secrets/unfret-android-upload.p12 -alias upload \
+  -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Kroshtan upload, O=Kroshtan, C=NL"
+keytool -list -v -keystore ~/kroshtan_secrets/unfret-android-upload.p12 -alias upload   # SHA-256 fingerprint
+keytool -export -rfc -keystore ~/kroshtan_secrets/unfret-android-upload.p12 -alias upload \
+  -file ~/kroshtan_secrets/unfret-android-upload-cert.pem   # what Play Console asks for
+```
+
+Keep its password like the release key's. Register the certificate in Play Console (App integrity, when choosing
+"use an existing app signing key"), then set `ANDROID_UPLOAD_KEYSTORE_B64` (`base64 -w0 unfret-android-upload.p12`),
+`ANDROID_UPLOAD_KEYSTORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS` (`upload`) and `ANDROID_UPLOAD_KEY_PASSWORD` (the
+store password, for PKCS12). The workflow's "Sign and verify the app bundle" step prints the certificate's SHA-256:
+it must match the upload certificate Play Console shows.
+
+### Which build goes to Play
+
+`BUNDLE_BUILD_TYPE` at the top of `.forgejo/workflows/release-apk.yaml` names the build type whose bundle goes to
+Play (Gradle's `bundle<Type>`, output `app/build/outputs/bundle/<type>/app-<type>.aab`); the Makefile's
+`BUNDLE_BUILD_TYPE` (`make release-bundle`) is the same and kept in step. It is `release` for now; once the `play`
+build type exists (the release without prices or the checkout link), it becomes `play` in both places.
