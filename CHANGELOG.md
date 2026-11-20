@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Releases go to Google Play by themselves.** The "Release APK" workflow now uploads the signed app bundle to
+  Google Play and releases it (`scripts/play-upload.py`, the Android Publisher API with the service account in the
+  repo secret `PLAY_SERVICE_ACCOUNT_JSON`): named after versionName, with this version's CHANGELOG section as its
+  release notes, on the track the run's new `play_track` input names (`production` by default, `internal`, or
+  `none`). A dry run checks it against Play without uploading; a versionCode Play has already is never sent again
+  (docs/RELEASING.md, "Releasing on Google Play").
 - **Progress counts checks, as the result does.** While checking, the app said "Checking… 15 steps done" and the
   result then said "What we checked: 9 checks in 4 areas": the progress counted every step of the analysis (reading
   the page, classifying it, triage) and the result only the checks. With a server that marks the steps that are checks

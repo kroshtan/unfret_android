@@ -23,12 +23,19 @@ name: Release APK
 # It also builds the app bundle (AAB) for Google Play, `bundle<BUNDLE_BUILD_TYPE>` below, and scripts/sign-bundle.sh
 # checks it the same way, signs it with jarsigner with the Play upload key (never the release key: it refuses a bundle
 # signed with the release key's certificate) and adds unfret-<version>.aab to SHA256SUMS. It is attached next to the
-# APK, for uploading to Google Play by hand; it is not for a direct install (docs/RELEASING.md, "Google Play").
+# APK; it is not for a direct install (docs/RELEASING.md, "Google Play").
+#
+# Then scripts/play-upload.py sends that bundle to Google Play, on the track `play_track` names (production by
+# default, or internal; none skips it): one edit with the bundle, a release named after versionName with this
+# version's CHANGELOG.md section as its notes, committed (Play then reviews it). A versionCode the track has already
+# (a re-run) is skipped; one Play has elsewhere stops the run. A dry run signs in and checks all that against Play,
+# uploading and committing nothing. Without the PLAY_SERVICE_ACCOUNT_JSON secret (the service account's JSON key) or
+# without an app bundle it says so and skips Play.
 #
 # Repo secrets (docs/RELEASING.md): ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and
 # ANDROID_KEY_PASSWORD for the APK; ANDROID_UPLOAD_KEYSTORE_B64, ANDROID_UPLOAD_KEYSTORE_PASSWORD,
-# ANDROID_UPLOAD_KEY_ALIAS and ANDROID_UPLOAD_KEY_PASSWORD for the app bundle. They reach only the signing steps, on
-# the deploy runner (never the public one). While any of the first four is missing the run builds and checks the
+# ANDROID_UPLOAD_KEY_ALIAS and ANDROID_UPLOAD_KEY_PASSWORD for the app bundle; PLAY_SERVICE_ACCOUNT_JSON for Google
+# Play. They reach only the signing and Play steps, on the deploy runner (never the public one). While any of the first four is missing the run builds and checks the
 # unsigned APK, says signing isn't set up, and passes; while any of the upload four is missing it says so and skips
 # the app bundle altogether (no build, no signature, nothing attached), and the APK goes ahead as before.
 on:
@@ -44,6 +51,15 @@ on:
         required: true
         default: true
         type: boolean
+      play_track:
+        description: "Google Play track for the app bundle: production, internal, or none (no Play upload)"
+        required: true
+        default: production
+        type: choice
+        options:
+          - production
+          - internal
+          - none
 
 concurrency:
   group: release-unfret-android
@@ -327,6 +343,25 @@ jobs:
           done
           echo "::notice::Unfret for Android $VERSION is attached to $SERVER/$REPO/releases/tag/$TAG. Next: in" \
             "unfret_backend, make android-release TAG=$TAG and open a pull request (docs/RELEASING.md)."
-          if [[ "$BUNDLE" == true ]]; then
-            echo "::notice::For Google Play: upload $aab from that release in Play Console (docs/RELEASING.md)."
+      - name: Release the app bundle on Google Play
+        if: steps.release.outputs.bundle == 'true' && (steps.release.outputs.signing == 'true' || steps.release.outputs.dry_run == 'true')
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          DRY_RUN: ${{ steps.release.outputs.dry_run }}
+          PLAY_TRACK: ${{ inputs.play_track }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          aab="dist/release/unfret-$VERSION.aab"
+          if [[ "$PLAY_TRACK" == none ]]; then
+            echo "::notice::play_track is none: $aab is not sent to Google Play (upload it in Play Console by hand)."
+            exit 0
           fi
+          if [[ -z "$PLAY_SERVICE_ACCOUNT_JSON" ]]; then
+            echo "::notice::Google Play upload isn't set up (repo secret PLAY_SERVICE_ACCOUNT_JSON; docs/RELEASING.md):" \
+              "upload $aab in Play Console by hand."
+            exit 0
+          fi
+          flags=(--track "$PLAY_TRACK")
+          if [[ "$DRY_RUN" == true ]]; then flags+=(--dry-run); fi
+          scripts/play-upload.py "${flags[@]}" "$aab"
