@@ -8,10 +8,11 @@ Two kinds of build:
 - **Release** (the "Release APK" workflow): built unsigned by Gradle (`make release-apk`), signed with Unfret's
   release key by `scripts/sign-release.sh` (apksigner, v2 and v3 schemes), always talking to unfret.net. It is
   attached to a Forgejo release and offered on [unfret.net/android](https://unfret.net/android).
-- **App bundle for Google Play** (the same workflow, once the upload key is set up): the same release build as an
-  Android App Bundle, built unsigned by Gradle (`make release-bundle`), signed with the Play *upload* key by
-  `scripts/sign-bundle.sh` (jarsigner), and attached to the same Forgejo release for uploading to Play by hand. Not
-  for a direct install: Play serves APKs it builds from it, signed with the release key ("Google Play" below).
+- **App bundle for Google Play** (the same workflow, once the upload key is set up): the `play` build (the release
+  without prices, "Get checks" or the checkout link) as an Android App Bundle, built unsigned by Gradle
+  (`make release-bundle`), signed with the Play *upload* key by `scripts/sign-bundle.sh` (jarsigner), and attached to
+  the same Forgejo release for uploading to Play by hand. Not for a direct install: Play serves APKs it builds from
+  it, signed with the release key ("Google Play" below).
 
 ## Versions and betas
 
@@ -152,11 +153,12 @@ extractor if the extension changed (`extractor/README.md`).
    Data safety form: data collected: none stored by the app; sent to unfret.net: "Web browsing / page content the
    user chooses to check" for app functionality, not shared with third parties, encrypted in transit; no ads,
    no analytics. Content rating questionnaire; target audience adults.
-4. Payments: the app sells nothing and shows no prices; checks are bought on the website (no Play Billing needed).
-   Don't add in-app links or wording that urge buying outside Play beyond "Get checks" opening the website;
-   re-check Google's current payments policy before the first submission.
+4. Payments: the Play build is the `play` build type (`Storefront`): it sells nothing, shows no price and points
+   nowhere to buy, no "Get checks" and no link to the checkout (no Play Billing needed); a gift code is redeemed in
+   the app. Its words are `src/play/res`'s over `src/main/res`'s, and StorefrontTest fails on a Play string that
+   speaks of buying. Re-check Google's current payments policy before the first submission.
 5. Make the upload key and set its four repo secrets (below); the next "Release APK" run attaches
-   `unfret-<version>.aab`, signed with it. Upload that file to the internal testing track first.
+   `unfret-<version>.aab`, signed with it. Upload that file (the `play` build's bundle) to the internal testing track first.
 
 ### The upload key
 
@@ -185,5 +187,6 @@ it must match the upload certificate Play Console shows.
 
 `BUNDLE_BUILD_TYPE` at the top of `.forgejo/workflows/release-apk.yaml` names the build type whose bundle goes to
 Play (Gradle's `bundle<Type>`, output `app/build/outputs/bundle/<type>/app-<type>.aab`); the Makefile's
-`BUNDLE_BUILD_TYPE` (`make release-bundle`) is the same and kept in step. It is `release` for now; once the `play`
-build type exists (the release without prices or the checkout link), it becomes `play` in both places.
+`BUNDLE_BUILD_TYPE` (`make release-bundle`) is the same and kept in step. It is `play`: the release without prices,
+"Get checks" or the checkout link (item 4), so `bundlePlay`, `app/build/outputs/bundle/play/app-play.aab`. Never the
+`release` build type's bundle: it has "Get checks".

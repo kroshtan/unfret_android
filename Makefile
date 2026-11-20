@@ -17,8 +17,9 @@ NODE := $(DOCKER_RUN) -w /work/extractor $(NODE_IMAGE)
 APK := app/build/outputs/apk/debug/app-debug.apk
 RELEASE_APK := app/build/outputs/apk/release/app-release-unsigned.apk
 # The build type whose app bundle goes to Google Play: the same as BUNDLE_BUILD_TYPE in
-# .forgejo/workflows/release-apk.yaml (keep them in step). Gradle's bundle<Type> builds it, unsigned.
-BUNDLE_BUILD_TYPE := release
+# .forgejo/workflows/release-apk.yaml (keep them in step). Gradle's bundle<Type> builds it, unsigned. `play`: the
+# release without prices, "Get checks" or the checkout link (Storefront).
+BUNDLE_BUILD_TYPE := play
 BUNDLE_TASK := bundle$(shell printf %s '$(BUNDLE_BUILD_TYPE)' | sed 's/^./\U&/')
 RELEASE_AAB := app/build/outputs/bundle/$(BUNDLE_BUILD_TYPE)/app-$(BUNDLE_BUILD_TYPE).aab
 

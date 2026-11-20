@@ -39,6 +39,15 @@
   buttons, 48dp, in reading order; the quick button's description includes its hint.
 - The intro says the app makes its own pass and what Android's backup keeps; it is asked again once (consent
   version 2). PRIVACY.md says the same.
+- **A Google Play build** (the `play` build type, `bundlePlay`): it sells nothing and points nowhere to buy, as
+  Google Play's payments policy asks of an app that doesn't use Play Billing. No "Get checks", no line that checks
+  are bought on unfret.net, no price (a quick result suggests a deep check only when the pass can run one now, and
+  without the server's pack price), and no link to the checkout or `/money` (only the privacy, objection, about and
+  terms pages open); its words without buying are in `src/play/res`. **Have a gift code?** redeems a `ufi_…` code
+  in the app, onto the pass in use (`POST /v1/invites/redeem`), with the refusals in the app's words; with no checks
+  left the home screen says "You have no deep checks left. Quick checks are free." Free checks on install, quick
+  checks, a pass pasted or from a link, and the balance are as in the direct download, which is unchanged (its
+  release APK is still `assembleRelease`). Decided when the app is built, not by the installer.
 - `versionCode` 2, `versionName` 0.1.0-beta.2.
 
 ## 0.1.0-beta.1 (unreleased)

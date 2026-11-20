@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Sign the unsigned release app bundle (AAB) with Unfret's Google Play upload key, check it, and write
+# Sign the unsigned Google Play app bundle (AAB, the `play` build type) with Unfret's Google Play upload key, check it, and write
 #   <out>/unfret-<version>.aab, and its line in <out>/SHA256SUMS (added next to the APK's, which
 #   scripts/sign-release.sh writes first).
 #
-#   scripts/sign-bundle.sh app/build/outputs/bundle/release/app-release.aab dist/release
+#   scripts/sign-bundle.sh app/build/outputs/bundle/play/app-play.aab dist/release
 #
 # The bundle is for Google Play only, never a direct install: Play checks the upload key's signature, then signs the
 # APKs it serves with the app signing key, which is Unfret's release key (docs/RELEASING.md, "Google Play"). So this

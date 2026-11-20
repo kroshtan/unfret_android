@@ -50,11 +50,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # The build type whose app bundle goes to Google Play: Gradle's task is bundle<Type> (bundleRelease) and its output
-  # app/build/outputs/bundle/<type>/app-<type>.aab. The one place to change it: to `play` once that build type exists
-  # (the Play build without prices or the checkout link), which makes it bundlePlay and app-play.aab. The Makefile's
-  # BUNDLE_BUILD_TYPE (`make release-bundle`) names the same; keep them in step.
-  BUNDLE_BUILD_TYPE: release
+  # The build type whose app bundle goes to Google Play: Gradle's task is bundle<Type> and its output
+  # app/build/outputs/bundle/<type>/app-<type>.aab. It is `play` (bundlePlay, app-play.aab): the release without
+  # prices, "Get checks" or the checkout link (Storefront). The Makefile's BUNDLE_BUILD_TYPE (`make release-bundle`)
+  # names the same; keep them in step.
+  BUNDLE_BUILD_TYPE: play
 
 jobs:
   release-apk:
