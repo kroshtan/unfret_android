@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The page reader sends every product page's gallery first** (unfret_extension 29d4415): the structured data's or
+  Open Graph main photo, AliExpress's and Temu's page data, Shopify's product JSON and gallery markup (zoom
+  attributes, carousels), one photo per size, at most 12, so the deep check's photo steps see the product's photos
+  on any shop, not only on Amazon.
 - **The page reader sends an Amazon page's whole gallery** (unfret_extension 167638d, `extractor/EXTENSION_COMMIT`).
   On Amazon's mobile page the photos sent were the main image and the page's other images (banners, pixels); now
   the carousel's large photos, in order, at most 12, so the deep check's photo steps see more than photo 1. The
