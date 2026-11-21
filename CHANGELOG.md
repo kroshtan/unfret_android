@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The page reader reads Amazon's mobile page's price, and reference prices and reviews on every shop**
+  (unfret_extension 17fe7a7). The app's WebView gets Amazon's mobile page, whose price the reader missed: a check
+  sent no price, so a discount against the "Adviesprijs" (List Price, RRP, UVP) went unseen and the result said
+  "Worth a look" where the server's own read said "Think twice". Now the price to pay, the reference price, the
+  rating and review count, the seller and the top reviews with their titles and texts; bol.com's price, reference
+  price, partner seller, star distribution and reviews; WooCommerce, Judge.me, Loox, Stamped and eBay's reference
+  prices and ratings; JSON-LD strike-through prices and separate ratings; a shop's "About us" link.
 - **The page reader sends a listing's variant options** (unfret_extension ece8ba0): each picker dimension (size,
   colour, style, amount) with its options, their prices when the page shows them, the selected one and which option
   the price shown belongs to, from Amazon, Walmart, Shopify, WooCommerce, schema.org or the page's own picker, so the
