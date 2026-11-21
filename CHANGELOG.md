@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The page reader sends a listing's variant options** (unfret_extension ece8ba0): each picker dimension (size,
+  colour, style, amount) with its options, their prices when the page shows them, the selected one and which option
+  the price shown belongs to, from Amazon, Walmart, Shopify, WooCommerce, schema.org or the page's own picker, so the
+  deep check can tell different products grouped as one listing's sizes, and a price shown for one of them.
 - **The page reader sends every product page's gallery first** (unfret_extension 29d4415): the structured data's or
   Open Graph main photo, AliExpress's and Temu's page data, Shopify's product JSON and gallery markup (zoom
   attributes, carousels), one photo per size, at most 12, so the deep check's photo steps see the product's photos
