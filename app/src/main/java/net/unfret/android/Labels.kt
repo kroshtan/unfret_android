@@ -1,0 +1,122 @@
+package net.unfret.android
+
+import org.json.JSONArray
+import org.json.JSONObject
+import java.security.SecureRandom
+import java.util.Base64
+
+/**
+ * "Wrong result?", the one report flow (`POST /v1/labels`, contract v1): the level the shopper thinks is right, the
+ * findings shown that are wrong, findings that are missing, and an optional explanation, sent with the result's
+ * `label_token` and the analysed request exactly as sent. The report keeps the page it is about (scrubbed), never who
+ * sent it. At least one of [level], [wrong] and [missing] is needed.
+ */
+data class LabelReport(
+    val token: String,
+    val request: JSONObject,
+    val level: Int? = null,
+    val wrong: List<String> = emptyList(),
+    val missing: List<String> = emptyList(),
+    val explanation: String = "",
+    val verdict: JSONObject? = null,
+    /** Only when the user turned the contributor key on ([ContributorKey]). */
+    val contributorKey: String? = null,
+) {
+    val complete: Boolean get() = level != null || wrong.isNotEmpty() || missing.isNotEmpty()
+
+    fun body(): JSONObject {
+        require(complete) { "a level, a wrong finding or a missing one is needed" }
+        require(level == null || level in 0..Risk.MAX) { "level $level" }
+        val body = JSONObject().put("label_token", token).put("request", request)
+        if (level != null) body.put("level", level)
+        if (wrong.isNotEmpty()) body.put("wrong", JSONArray(wrong))
+        if (missing.isNotEmpty()) body.put("missing", JSONArray(missing))
+        explanation.trim().take(MAX_EXPLANATION).takeIf { it.isNotEmpty() }?.let { body.put("explanation", it) }
+        if (verdict != null) body.put("verdict", verdict)
+        if (contributorKey != null) body.put("contributor_key", contributorKey)
+        return body
+    }
+
+    companion object {
+        const val MAX_EXPLANATION = 1000
+    }
+}
+
+/** `POST /v1/labels`'s answer: queued, already_reported or already_known. */
+data class LabelOutcome(val status: String, val anonymous: Boolean)
+
+/** `POST /v1/contributors`: the contributor's handle and how their reports went. */
+data class Contributor(
+    val handle: String,
+    val public: Boolean,
+    val labels: Int,
+    val agreed: Int,
+    val points: Int,
+    val rank: Int?,
+) {
+    companion object {
+        fun parse(json: JSONObject) = Contributor(
+            handle = if (json.isNull("handle")) "" else json.optString("handle"),
+            public = json.optBoolean("public", false),
+            labels = json.optInt("labels", 0),
+            agreed = json.optInt("agreed", 0),
+            points = json.optInt("points", json.optInt("agreed", 0)),
+            rank = if (json.has("rank") && !json.isNull("rank")) json.optInt("rank") else null,
+        )
+    }
+}
+
+/** One row of the public leaderboard (pseudonymous handles of contributors who opted in). */
+data class LeaderboardEntry(val rank: Int, val handle: String, val agreed: Int, val settled: Int)
+
+/**
+ * The optional contributor key: 32 random bytes in base64url without padding (43 characters), made and kept on the
+ * phone, sent only with reports and contributor calls ([UnfretApi.label], [UnfretApi.contributor]), never with a
+ * check. Losing it starts a new profile.
+ */
+object ContributorKey {
+    private val FORM = Regex("^[A-Za-z0-9_-]{43}$")
+
+    fun generate(random: SecureRandom = SecureRandom()): String {
+        val bytes = ByteArray(32)
+        random.nextBytes(bytes)
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
+    }
+
+    fun isValid(key: String?): Boolean = key != null && FORM.matches(key)
+}
+
+/**
+ * Findings a shopper may say are missing (`missing`): reason types of the server's copy catalogue, in its words, the
+ * ones a shopper can see for themselves. Those the result already showed are left out.
+ */
+val MISSING_CHOICES: List<Pair<String, String>> = listOf(
+    "new_domain" to "Brand-new web shop",
+    "missing_trust_info" to "Little shop information",
+    "irreversible_payment_only" to "Only payments you can't get back",
+    "implausible_claims" to "Hard-to-believe claims",
+    "claim_contradicted" to "A claim that doesn't add up",
+    "generic_product" to "Generic product",
+    "dropshipping_tools" to "Dropshipping",
+    "drip_pricing" to "Price goes up at checkout",
+    "no_return_policy" to "No return policy found",
+    "timer_resets" to "Fake countdown",
+    "implausible_discount" to "Unbelievable discount",
+    "duplicate_reviews" to "Copy-paste reviews",
+    "preticked_addon" to "Paid extra already ticked",
+)
+
+/** Why `POST /v1/labels` or `/v1/contributors` refused, in the app's words, by error code; null for other failures. */
+fun labelRefusal(error: Throwable): Int? = if (error !is ApiError) {
+    null
+} else {
+    when (error.code) {
+        "BAD_LABEL_TOKEN" -> R.string.report_expired
+        "ALREADY_LABELLED", "ALREADY_REPORTED_BY_YOU" -> R.string.report_by_you
+        "LABEL_LIMIT" -> R.string.report_limit
+        "LABELS_PAUSED", "LABELS_OFF", "QUEUE_FULL" -> R.string.report_paused
+        "BAD_HANDLE" -> R.string.handle_invalid
+        "HANDLE_TAKEN" -> R.string.handle_taken
+        else -> null
+    }
+}

@@ -1,6 +1,6 @@
 # Unfret privacy policy (Android app)
 
-_Last updated: 25 November 2026 (no pass: every check is free and tied to no one; a deep check solves a small puzzle on the phone; nothing in Android's backup. Earlier: the app made its own pass; "Unfret pass" wording; contact hello@unfret.net). Draft for the store listing; to be reviewed before publication._
+_Last updated: 25 November 2026 ("Wrong result?" keeps the page, never who sent it; an optional contributor key; no pass: every check is free and tied to no one; a deep check solves a small puzzle on the phone; nothing in Android's backup. Earlier: the app made its own pass; "Unfret pass" wording; contact hello@unfret.net). Draft for the store listing; to be reviewed before publication._
 
 Unfret is made by Kroshtan (Floris van Beers, the Netherlands). The app works like the Unfret browser extension
 and follows the same rules; the extension's policy is in its repository, the server's at <https://unfret.net/privacy>.
@@ -46,6 +46,19 @@ When a check screen opens, the app asks `unfret.net` whether free deep checks ar
 A result that found the same product on another shop shows both photos as small thumbnails, which the app loads
 from `unfret.net` itself (`/v1/images/…`): your phone never contacts the other shop.
 
+**Wrong result?** If you tap it under a result and send a report, the app sends `unfret.net` that one check's
+request (the page address, product facts and text it sent), the result, the level you think is right, the findings
+you marked wrong or missing, and what you typed, if anything (`POST /v1/labels`). The report keeps the page it is
+about, with personal details removed, **never who sent it**: no account, no device identifier, and the server keeps
+no IP address or time of day with it. Nothing is sent until you tap "Send report".
+
+**Contributor key (optional, off by default).** If you turn on "Use a contributor key", the app makes a random key on
+the phone (32 random bytes) and sends it with your reports, so your reports can count for more over time, and with
+the calls that show your reports and your leaderboard name (`POST /v1/contributors`). It is never sent with a check.
+A leaderboard name is optional and yours to choose; it is shown only if you ask. Turning the key off asks `unfret.net`
+to forget its profile (`POST /v1/contributors/forget`) and deletes the key from the phone. The leaderboard itself
+(`GET /v1/contributors/leaderboard`) is loaded with nothing about you.
+
 The app makes no other requests: no analytics, no trackers, no advertising or crash-reporting services, no Google
 Play Services. The page you open is loaded by Android's system WebView, which talks to that page's own servers
 like any browser; its usage statistics are switched off for this app.
@@ -56,7 +69,8 @@ whatever you do there is covered by the website's policy, not by the app.
 
 ## What is stored on your phone
 
-- that you accepted the intro screen (and, in test builds only, which server to use).
+- that you accepted the intro screen (and, in test builds only, which server to use);
+- your contributor key, only if you turned it on.
 
 Nothing about the pages you check. The built-in browser starts empty for every page; when you close it, its
 cookies, site storage, cache and other files are deleted and its process ends. Results are shown, never saved.

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **"Wrong result?" is one flow** (`POST /v1/labels`): the risk level you think is right (0-4, the level shown is
+  marked), which findings shown are wrong, findings that are missing (a short list of the server's reason types, behind
+  "Did we miss something?"), and an optional explanation, sent with the result's `label_token`, the request exactly as
+  sent and the verdict. At least one of level, wrong or missing. Quick and deep results alike. The dialog says the
+  report keeps the page, never who sent it; refusals in the app's words (already reported, check again, paused).
+- **An optional contributor key** on the home screen ("Your reports"): off by default; turned on, the app makes 32
+  random bytes (base64url, 43 characters), keeps them on the phone, and sends them only with reports and contributor
+  calls, never with a check. With it: your reports and how many agreed, a leaderboard name you choose (shown only if
+  you ask), and the leaderboard. Turning it off asks the server to forget the profile and deletes the key.
+
 - **The risk level.** The result card leads with the one overall risk level (`verdict.risk`, 0-4, higher is worse):
   "Risk level 2 of 4" with the level's words ("May cost more than it's worth"), its number in the circle and the
   level's colour, then the one-line explanation, then "Why this level": every finding behind it, worst first, each
@@ -24,7 +34,6 @@
   linking to the home page; it sends `X-Unfret-Donate: off` on every request and has no donate or support link. The
   direct download says deep checks are paused until next month and links "Support Unfret" to `unfret.net/donate`,
   and its home screen links "Support Unfret" to `unfret.net/support`.
-- "Wrong result?" is hidden until it moves to the new report flow (free checks have no `report_token`).
 
 - **The page reader reads Amazon's mobile page's price, and reference prices and reviews on every shop**
   (unfret_extension 17fe7a7). The app's WebView gets Amazon's mobile page, whose price the reader missed: a check

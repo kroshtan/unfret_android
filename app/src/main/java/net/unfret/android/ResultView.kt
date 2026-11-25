@@ -22,6 +22,7 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
     var onBackToPage: () -> Unit = {}
     var onDone: () -> Unit = {}
     var onObject: () -> Unit = {}
+    var onReport: () -> Unit = {}
 
     /** The button under a quick result's suggestion: run a deep check of the same page, or support Unfret. */
     var onDeepHint: (DeepCheck.Action) -> Unit = {}
@@ -43,13 +44,20 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
     private val headline: TextView = root.findViewById(R.id.headline)
     private val noCheck: TextView = root.findViewById(R.id.no_check)
     private val sections: LinearLayout = root.findViewById(R.id.sections)
+    private val wrongResult: MaterialButton = root.findViewById(R.id.wrong_result)
 
     init {
         root.findViewById<MaterialButton>(R.id.back_to_page).setOnClickListener { onBackToPage() }
         root.findViewById<MaterialButton>(R.id.done).setOnClickListener { onDone() }
         root.findViewById<MaterialButton>(R.id.object_result).setOnClickListener { onObject() }
+        wrongResult.setOnClickListener { onReport() }
         ViewCompat.setAccessibilityHeading(label, true)
         noCheck.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+    }
+
+    /** Whether "Wrong result?" is offered: a result with a label token, not reported from this screen yet. */
+    fun setReportable(reportable: Boolean) {
+        wrongResult.visibility = if (reportable) View.VISIBLE else View.GONE
     }
 
     /** [note]: why this is a quick check when a deep one was asked for (paused, too many, unavailable), with its link. */
@@ -63,7 +71,7 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         val verdict = result.verdict
         label.text = when {
             !result.assessed -> context.getString(R.string.not_assessed)
-            risk != null -> risk.label.ifEmpty { context.getString(levelLabel(risk.level)) }
+            risk != null -> risk.label.ifEmpty { context.getString(levelWords(risk.level)) }
             verdict != null && verdict.label.isNotEmpty() -> verdict.label
             band != null -> context.getString(bandLabel(band))
             else -> context.getString(R.string.result_title)
@@ -84,6 +92,7 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         // the check cost, as a sentence ("Deep checks are free.").
         noCheck.text = note ?: chargeLine(result)
         noCheck.visibility = if (noCheck.text.isNullOrEmpty()) View.GONE else View.VISIBLE
+        setReportable(result.reportable)
 
         sections.removeAllViews()
         // Part of the check didn't finish, so the verdict may be milder than it should be: first, under the band card.
@@ -319,15 +328,6 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         Band.CONCERNS -> R.string.band_concerns
         Band.CAREFUL -> R.string.band_careful
         Band.JUNK_OR_SCAM -> R.string.band_junk_or_scam
-    }
-
-    /** The level in words (the server's), for a risk level without its label. */
-    private fun levelLabel(level: Int): Int = when (level) {
-        0 -> R.string.level_none
-        1 -> R.string.level_manipulation
-        2 -> R.string.level_overpaying
-        3 -> R.string.level_doesnt_work
-        else -> R.string.level_wont_arrive
     }
 
     /** A level's strong and soft colours: higher is worse. */

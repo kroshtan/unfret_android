@@ -39,6 +39,15 @@ fun padForSystemBars(root: View) {
     }
 }
 
+/** A risk level in words (the server's), for a level without its label and for "Wrong result?". */
+fun levelWords(level: Int): Int = when (level) {
+    0 -> R.string.level_none
+    1 -> R.string.level_manipulation
+    2 -> R.string.level_overpaying
+    3 -> R.string.level_doesnt_work
+    else -> R.string.level_wont_arrive
+}
+
 /** The plain-words message for a problem. */
 fun Problem.message(): Int = when (this) {
     Problem.SERVICE_OFF -> R.string.problem_service_off

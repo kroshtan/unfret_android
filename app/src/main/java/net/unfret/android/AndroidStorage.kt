@@ -5,9 +5,9 @@ import androidx.core.content.edit
 import java.security.KeyStore
 
 /**
- * What the app keeps on the phone: whether the intro was accepted (and which version), and in debug builds which
- * server to use. Nothing about the pages checked, and no pass: checks are free and tied to no one. None of it is in a
- * backup (`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`).
+ * What the app keeps on the phone: whether the intro was accepted (and which version), the contributor key when the
+ * user turned it on, and in debug builds which server to use. Nothing about the pages checked, and no pass: checks are
+ * free and tied to no one. None of it is in a backup (`res/xml/backup_rules.xml`, `res/xml/data_extraction_rules.xml`).
  */
 class AppSettings(context: Context) {
     private val app = context.applicationContext
@@ -43,6 +43,17 @@ class AppSettings(context: Context) {
             prefs.edit { putString(SERVER, value) }
         }
 
+    /**
+     * The contributor key ([ContributorKey]), only once the user turned it on; sent only with reports and contributor
+     * calls, never with a check. Null to turn it off.
+     */
+    var contributorKey: String?
+        get() = prefs.getString(CONTRIBUTOR_KEY, null)?.takeIf(ContributorKey::isValid)
+        set(value) {
+            require(value == null || ContributorKey.isValid(value))
+            prefs.edit { if (value == null) remove(CONTRIBUTOR_KEY) else putString(CONTRIBUTOR_KEY, value) }
+        }
+
     companion object {
         /** `shared_prefs/unfret.xml`: excluded from every backup. */
         const val FILE = "unfret"
@@ -51,6 +62,7 @@ class AppSettings(context: Context) {
         /** 3: no pass; checks are free and tied to no one (after 0.1.0). */
         private const val CONSENT_VERSION = 3
         private const val SERVER = "server"
+        private const val CONTRIBUTOR_KEY = "contributor_key"
     }
 }
 

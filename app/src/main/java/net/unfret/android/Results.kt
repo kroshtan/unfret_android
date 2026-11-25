@@ -156,7 +156,7 @@ data class Risk(
  * A finding behind the risk level, as shown: its title, and the detail and source of the reason of the same type when
  * the result has one (`verdict.reasons`).
  */
-data class RiskFinding(val title: String, val level: Int?, val detail: String, val source: String)
+data class RiskFinding(val type: String, val title: String, val level: Int?, val detail: String, val source: String)
 
 /** What a check cost, when the server didn't say it in words (an older server): the same sentences, without a count. */
 enum class Charge { QUICK, NOT_ASSESSED, REPEAT, FREE }
@@ -180,8 +180,8 @@ data class AnalysisResult(
     val verdict: Verdict?,
     /** False when no check was used: a page that couldn't be assessed, or a recent result from the cache. */
     val charged: Boolean?,
-    /** Lets this pass report the result as wrong (`POST /v1/reports`) within 7 days; absent for quick checks. */
-    val reportToken: String? = null,
+    /** Lets anyone who sees this result report it as wrong (`POST /v1/labels`, "Wrong result?"). */
+    val labelToken: String? = null,
     /** The verdict exactly as the server sent it, for a report. */
     val verdictJson: JSONObject? = null,
     /** "quick" for the rules-only quick check; "deep" or empty (an older server) otherwise. */
@@ -204,7 +204,7 @@ data class AnalysisResult(
             val seen = mutableSetOf<String>()
             return risk.because.filter { it.type.isEmpty() || seen.add(it.type) }.map { b ->
                 val reason = reasons[b.type]
-                RiskFinding(b.title, b.level, reason?.detail.orEmpty(), reason?.source.orEmpty())
+                RiskFinding(b.type, b.title, b.level, reason?.detail.orEmpty(), reason?.source.orEmpty())
             }
         }
 
@@ -216,6 +216,19 @@ data class AnalysisResult(
             freeCheck == true -> Charge.FREE
             charged == false -> Charge.REPEAT
             else -> null
+        }
+
+    /** "Wrong result?" is offered: an assessed result with a label token. */
+    val reportable: Boolean get() = labelToken != null && assessed
+
+    /**
+     * The findings the result showed, by type, for "Which are wrong?": the risk level's, then the reasons shown, each
+     * once (a type the server didn't name can't be reported).
+     */
+    val shownFindings: List<Pair<String, String>>
+        get() {
+            val all = riskFindings.map { it.type to it.title } + reasonsToShow.map { it.type to it.title }
+            return all.filter { it.first.isNotEmpty() && it.first != "overall" }.distinctBy { it.first }
         }
 
     /** Whether the page could be assessed at all (score -1 means it couldn't). */
@@ -253,7 +266,7 @@ data class AnalysisResult(
                 explanation = json.optString("explanation"),
                 verdict = json.optJSONObject("verdict")?.let(::parseVerdict),
                 charged = if (json.has("charged") && !json.isNull("charged")) json.optBoolean("charged") else null,
-                reportToken = json.optString("report_token").takeIf { it.isNotEmpty() && !json.isNull("report_token") },
+                labelToken = text(json, "label_token").takeIf { it.isNotEmpty() },
                 verdictJson = json.optJSONObject("verdict"),
                 tier = text(json, "tier"),
                 freeCheck = if (json.has("free_check") && !json.isNull("free_check")) json.optBoolean("free_check") else null,

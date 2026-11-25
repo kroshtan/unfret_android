@@ -59,7 +59,10 @@ see [Building](#building)) and turn on the app's dev-server switch.
   first. On a private seller's ad the seller's name is never read.
 - **Sent, only to unfret.net:** the page address, those facts and that text. No pass, no account, no device
   details (the app identifies itself as `Unfret-Android/<version>`, not your phone's model), no location, no contacts.
-- **Kept on the phone:** whether you accepted the intro, and nothing else. The pages you open are forgotten: the
+- **Wrong result?** sends that check's request, its result and what you chose (`POST /v1/labels`). A report keeps
+  the page it's about, never who sent it. An optional contributor key (32 random bytes, made on the phone, off by
+  default) goes only with reports and contributor calls, never with a check.
+- **Kept on the phone:** whether you accepted the intro, and the contributor key if you turned it on. The pages you open are forgotten: the
   WebView runs in its own process, and when you close the page its cookies, storage, cache and other files are
   deleted and that process ends. Nothing goes into Android's backup.
 
@@ -96,7 +99,7 @@ share sheet / pasted link ─► CheckActivity (process :check)
   field), `ResultView` (the verdict), `UnfretApi` + `HttpUrlTransport` (the API over HttpURLConnection; HTTPS,
   unfret.net only, no redirects), `ProofOfWork` (a deep check's puzzle), `PageReading` + `AnalyzeRequest` (the
   reader's answers, and the request as the extension builds it), `SharedLink` (the link in shared text),
-  `Storefront` (what each build may link to), `AppSettings` + `OldPass` (the intro's yes; an older version's pass,
+  `Storefront` (what each build may link to), `Labels` ("Wrong result?" and the contributor key), `AppSettings` + `OldPass` (the intro's yes; an older version's pass,
   deleted).
 - Native Android Views with Material 3 (Material Components), not Compose: the app is three screens, a WebView sits
   naturally in a View hierarchy, and it keeps the APK and the dependency list small (AppCompat and Material,
@@ -104,8 +107,9 @@ share sheet / pasted link ─► CheckActivity (process :check)
 - No JavaScript interface is exposed to the page: the app asks the reader for its result with
   `evaluateJavascript` polls, so a page's scripts get nothing to call.
 - The API contract is the backend's `docs/api-contract-v1.md` ("Free checks for shoppers"); the app uses
-  `GET /v1/pricing`, `GET /v1/analyze/challenge` and `POST /v1/analyze/stream`, with the extension's request bodies
-  and its plain-words error messages.
+  `GET /v1/pricing`, `GET /v1/analyze/challenge`, `POST /v1/analyze/stream`, `POST /v1/labels` and
+  `/v1/contributors` (profile, forget, leaderboard), with the extension's request bodies and its plain-words error
+  messages.
 
 Debug builds have a switch for the dev deployment (dev.unfret.net, test network); release builds always use
 unfret.net.
