@@ -174,6 +174,8 @@
     <string name="report_level_shown">(shown)</string>
     <string name="report_wrong_title">Which of these are wrong?</string>
     <string name="report_missing_toggle">Did we miss something?</string>
+    <string name="report_missing_search">Search findings</string>
+    <string name="report_missing_none">No finding matches. Describe it in your own words below.</string>
     <string name="report_comment_hint">In your own words (optional)</string>
     <string name="report_note">Your report keeps this page, never who sent it. Personal details are removed from the page and from your words.</string>
     <string name="report_note_key">Your report keeps this page, never who sent it. Personal details are removed from the page and from your words. It goes with your contributor key.</string>

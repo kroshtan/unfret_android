@@ -28,7 +28,9 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
+import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
+import androidx.core.widget.doAfterTextChanged
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -480,11 +482,10 @@ class CheckActivity : AppCompatActivity() {
         val shownTypes = result.shownFindings
         val wrongBoxes = checkboxes(view.findViewById(R.id.report_wrong), shownTypes)
         if (shownTypes.isEmpty()) view.findViewById<View>(R.id.report_wrong_title).visibility = View.GONE
-        val missingChoices = missingChoices(catalogue, shownTypes)
-        val missingList = view.findViewById<LinearLayout>(R.id.report_missing)
-        val missingBoxes = checkboxes(missingList, missingChoices)
+        val missingPanel = view.findViewById<View>(R.id.report_missing)
+        val missingBoxes = missingChoices(view, missingChoices(catalogue, shownTypes))
         view.findViewById<MaterialButton>(R.id.report_missing_toggle).setOnClickListener { toggle ->
-            missingList.visibility = View.VISIBLE
+            missingPanel.visibility = View.VISIBLE
             toggle.visibility = View.GONE
         }
         val comment = view.findViewById<TextInputEditText>(R.id.report_comment)
@@ -532,6 +533,40 @@ class CheckActivity : AppCompatActivity() {
             }
             if (!loaded.isNullOrEmpty()) catalogue = loaded
         }
+    }
+
+    /**
+     * "Did we miss something?": the choices grouped by level, worst first, under the level's words, with a search
+     * field on top that hides what doesn't match (a ticked box stays ticked while hidden).
+     */
+    private fun missingChoices(view: View, choices: List<CatalogueFinding>): List<Pair<String, CheckBox>> {
+        val list = view.findViewById<LinearLayout>(R.id.report_missing_list)
+        val none = view.findViewById<TextView>(R.id.report_missing_none)
+        val groups = missingGroups(choices).map { (level, findings) ->
+            val heading = TextView(this)
+            heading.text = getString(levelWords(level))
+            heading.setTextAppearance(R.style.TextAppearance_Unfret_Small)
+            heading.setPadding(0, (12 * resources.displayMetrics.density).toInt(), 0, 0)
+            ViewCompat.setAccessibilityHeading(heading, true)
+            list.addView(heading)
+            heading to checkboxes(list, findings.map { it.type to it.title })
+        }
+        view.findViewById<TextInputEditText>(R.id.report_missing_search).doAfterTextChanged { typed ->
+            val query = typed?.toString().orEmpty()
+            var any = false
+            for ((heading, boxes) in groups) {
+                var visible = false
+                for ((_, box) in boxes) {
+                    val match = matchesSearch(box.text.toString(), query)
+                    box.visibility = if (match) View.VISIBLE else View.GONE
+                    visible = visible || match
+                }
+                heading.visibility = if (visible) View.VISIBLE else View.GONE
+                any = any || visible
+            }
+            none.visibility = if (any) View.GONE else View.VISIBLE
+        }
+        return groups.flatMap { it.second }
     }
 
     private fun checkboxes(into: LinearLayout, choices: List<Pair<String, String>>): List<Pair<String, CheckBox>> =

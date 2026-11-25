@@ -137,8 +137,8 @@ class LabelsTest {
             ),
         )
         assertEquals(listOf("new_domain" to "Brand-new web shop", "pushy_copy" to "Pushy sales talk"), result.shownFindings)
-        assertTrue(MISSING_CHOICES.any { it.first == "new_domain" })
-        assertEquals(MISSING_CHOICES.size, MISSING_CHOICES.map { it.first }.toSet().size)
+        assertTrue(MISSING_CHOICES.any { it.type == "new_domain" })
+        assertEquals(MISSING_CHOICES.size, MISSING_CHOICES.map { it.type }.toSet().size)
     }
 
     @Test
@@ -156,10 +156,11 @@ class LabelsTest {
         val catalogue = UnfretApi(UnfretApi.PRODUCTION, transport, donateOff = false).findingsCatalogue()
         assertEquals(3, catalogue.size)
         val shown = listOf("new_domain" to "Brand-new web shop")
-        assertEquals(listOf("fresh_type" to "Something new"), missingChoices(catalogue, shown))
+        assertEquals(listOf(CatalogueFinding("fresh_type", "Something new", 2)), missingChoices(catalogue, shown))
         val offline = missingChoices(null, shown)
-        assertFalse(offline.any { it.first == "new_domain" })
-        assertEquals(MISSING_CHOICES.size - 1, offline.size)
+        assertFalse(offline.any { it.type == "new_domain" })
+        // Without new_domain (shown) and irreversible_payment_only (a modifier, no level).
+        assertEquals(MISSING_CHOICES.size - 2, offline.size)
         assertEquals(offline, missingChoices(emptyList(), shown))
     }
 
@@ -174,5 +175,23 @@ class LabelsTest {
             ),
         )
         assertEquals(listOf("Domain registry (RDAP)", ""), result.riskFindings.map { it.source })
+    }
+
+    @Test
+    fun `missing choices are grouped by level, worst first, in the catalogue's order, and can be searched`() {
+        val catalogue = listOf(
+            CatalogueFinding("a", "Pushy sales talk", 1),
+            CatalogueFinding("b", "Brand-new web shop", 4),
+            CatalogueFinding("c", "Generic product", 2),
+            CatalogueFinding("d", "No company details", 4),
+            CatalogueFinding("e", "Only payments you can't get back", null),
+        )
+        val choices = missingChoices(catalogue, emptyList())
+        assertEquals(listOf("b", "d", "c", "a"), choices.map { it.type })
+        assertEquals(listOf(4, 2, 1), missingGroups(choices).map { it.first })
+        assertEquals(listOf("b", "d"), missingGroups(choices).first().second.map { it.type })
+        assertTrue(matchesSearch("Brand-new web shop", ""))
+        assertTrue(matchesSearch("Brand-new web shop", "  WEB  new "))
+        assertFalse(matchesSearch("Brand-new web shop", "web reviews"))
     }
 }

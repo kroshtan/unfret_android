@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **"Did we miss something?" is grouped by level**, worst first, under the level's words (as the extension does), with
+  a search field on top that narrows the list as you type (a ticked finding stays ticked).
+
 - **"Did we miss something?" reads the server's catalogue** (`GET /v1/catalogue/findings`, loaded once per check
   screen process): its types with a level, minus what the result showed; the built-in list only when it can't be
   loaded.
