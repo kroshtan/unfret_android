@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Unfret Dev, built on every push to main**: the `dev` build type (`net.unfret.android.dev`, "Unfret Dev", talks to
+  dev.unfret.net only), version `<versionName>-dev.<run>`, signed with a separate dev key (`scripts/sign-dev.sh`,
+  pinned in `docs/dev-cert.sha256`, never the release key) and published as the forge's rolling pre-release `dev`
+  (`scripts/publish-dev.sh`), which dev.unfret.net/android shows. docs/RELEASING.md: the three channels (Play, beta,
+  dev) and the version rule (`versionCode` always goes up across Play and the beta).
+
 - **"Did we miss something?" is grouped by level**, worst first, under the level's words (as the extension does), with
   a search field on top that narrows the list as you type (a ticked finding stays ticked).
 

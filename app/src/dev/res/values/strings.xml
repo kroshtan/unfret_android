@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Unfret Dev (the `dev` build type): its own name, so it's never mistaken for Unfret. It talks to dev.unfret.net. -->
+<resources>
+    <string name="app_name">Unfret Dev</string>
+    <string name="share_label">Check with Unfret Dev</string>
+</resources>
