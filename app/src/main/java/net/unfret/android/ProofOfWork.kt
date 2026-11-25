@@ -5,9 +5,9 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * The proof of work a new pass needs (`GET /v1/keys/challenge`, as the extension and the website solve it): a decimal
- * counter `n` with SHA-256(challenge + ":" + n) starting with `bits` zero bits. On average that takes 2^bits hashes
- * (18 bits: about 262,000), spread over the phone's cores. It is never made easier: the server checks it.
+ * The proof of work a free deep check needs (`GET /v1/analyze/challenge`, as the extension and the website solve it): a
+ * decimal counter `n` with SHA-256(challenge + ":" + n) starting with `bits` zero bits. On average that takes 2^bits
+ * hashes (20 bits: about a million), spread over the phone's cores. It is never made easier: the server checks it.
  */
 object ProofOfWork {
     /** Whether SHA-256([challenge]:[solution]) starts with [bits] zero bits (the server's `pow_ok`). */
@@ -70,7 +70,7 @@ object ProofOfWork {
         return bits
     }
 
-    /** The server's highest: `key_pow_bits` (18) plus up to 6 on a day when very many passes are made; 32 at most. */
+    /** Well above the server's `deep_pow_bits` (20 by default); 32 at most. */
     private const val MAX_BITS = 32
     private const val MAX_THREADS = 4
     private const val REPORT_EVERY = 4096
