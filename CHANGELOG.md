@@ -22,7 +22,7 @@
 - **Every check is free, with no pass.** Quick checks as before; a deep check now solves a small proof of work on the
   phone (`GET /v1/analyze/challenge`, spread over the phone's cores, off the main thread) and sends it with the check,
   with no `Authorization` and nothing about the user or the phone. A refused or expired puzzle is fetched and solved
-  once more. When a deep check can't run now (free deep checks paused for the month, too many from this network, or
+  once more. When a deep check can't run now (free deep checks paused until tomorrow, too many from this network, or
   unavailable) the app runs a quick check instead and says why above the result.
 - **No pass, packs, gift codes or balance.** The app no longer makes, keeps, pastes or takes a pass from a link (the
   `unfret.net/pass` App Link is gone), and has no "Get checks", "Have a code?", checks left or backup code. The first
@@ -30,11 +30,11 @@
   backed-up free-checks flag. Nothing goes into Android's backup or a device transfer any more. The intro is asked
   again once (consent version 3).
 - **Donations, by build.** While free deep checks are paused, the Google Play build says "Free checks run on
-  donations. Quick checks still work; deep checks are back next month. More info at unfret.net", with unfret.net
+  donations. Quick checks still work; deep checks are back tomorrow. More info at unfret.net", with unfret.net
   linking to the home page's Play variant (`https://unfret.net/?app=play`, which shows no donation links); it sends
   `X-Unfret-Donate: off` on every request and has no donate or support link ("Support Unfret" isn't in its APK: a
   build config field, empty in the Play build). The
-  direct download says deep checks are paused until next month and links "Support Unfret" to `unfret.net/donate`,
+  direct download says deep checks are paused until tomorrow and links "Support Unfret" to `unfret.net/donate`,
   and its home screen links "Support Unfret" to `unfret.net/support`.
 
 - **The page reader reads Amazon's mobile page's price, and reference prices and reviews on every shop**

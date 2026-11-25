@@ -220,10 +220,10 @@ class ResultsTest {
         val offer = """{"suggested": true, "reason": "on_the_fence", "quiet": false,
             "adds": [{"key": "shop_age", "area": "who", "label": "how old this shop is"}],
             "text": "A deep check also looks at how old this shop is.",
-            "cost": "Free deep checks are paused until next month.", "action": "donate", "action_label": "Support Unfret"}"""
+            "cost": "Free deep checks are paused until tomorrow.", "action": "donate", "action_label": "Support Unfret"}"""
         val hint = quick(offer).deepHint!!
         assertEquals("A deep check also looks at how old this shop is.", hint.text)
-        assertEquals("Free deep checks are paused until next month.", hint.cost)
+        assertEquals("Free deep checks are paused until tomorrow.", hint.cost)
         assertEquals(DeepCheck.Action.DONATE, hint.action)
         assertEquals("Support Unfret", hint.actionLabel)
         assertFalse(hint.quiet)

@@ -21,7 +21,7 @@ class StorefrontTest {
     private val runNow = DeepCheck("A deep check also looks at how old this shop is.", "Deep checks are free.", DeepCheck.Action.RUN_DEEP, "Run a deep check", false)
     private val donate = DeepCheck(
         "A deep check also looks at how old this shop is.",
-        "Free deep checks are paused until next month: they run on donations.",
+        "Free deep checks are paused until tomorrow: they run on donations.",
         DeepCheck.Action.DONATE,
         "Support Unfret",
         false,
@@ -148,7 +148,7 @@ class StorefrontTest {
         val donating = playBuild.filter { (_, texts) -> texts.any(Storefront::mentionsDonating) }.keys
         assertEquals(setOf("paused_note"), donating)
         assertEquals(
-            listOf("Free checks run on donations. Quick checks still work; deep checks are back next month. More info at unfret.net"),
+            listOf("Free checks run on donations. Quick checks still work; deep checks are back tomorrow. More info at unfret.net"),
             playBuild.getValue("paused_note"),
         )
     }

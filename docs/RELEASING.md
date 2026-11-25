@@ -164,7 +164,7 @@ APK" workflow uploads each release's app bundle itself ("Releasing on Google Pla
    is sold (no Play Billing needed): no price, no purchase button, no link to buying. It has **no donate or support
    link anywhere**: it sends `X-Unfret-Donate: off` (the server's words then leave donations out), never opens
    `/donate` or `/support`, and while free deep checks are paused says only "Free checks run on donations. Quick
-   checks still work; deep checks are back next month. More info at unfret.net", with unfret.net opening the home
+   checks still work; deep checks are back tomorrow. More info at unfret.net", with unfret.net opening the home
    page's Play variant (`/?app=play`, no donation links). Its words are `src/play/res`'s over `src/main/res`'s; StorefrontTest fails on a Play string that speaks of
    buying, or of donating other than that line. The direct download (`release`) links to `/donate` and `/support`.
    Re-check Google's current payments policy (donations included) before each submission.

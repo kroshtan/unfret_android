@@ -74,8 +74,8 @@
     <string name="quick_check">Quick check</string>
     <string name="quick_check_described">Quick check. Reads this page only, by Unfret\'s rules.</string>
     <string name="quick_hint">Reads this page only, by Unfret\'s rules.</string>
-    <!-- Free deep checks paused (the month's spend ceiling). The Google Play build has its own words (src/play/res) -->
-    <string name="paused_note">Free deep checks are paused until next month: they run on donations. Quick checks still work.</string>
+    <!-- Free deep checks paused (the spend ceiling, until tomorrow). The Google Play build has its own words (src/play/res) -->
+    <string name="paused_note">Free deep checks are paused until tomorrow: they run on donations. Quick checks still work.</string>
     <string name="quick_because_busy">Too many deep checks from your network just now, so here\'s a quick check. Try a deep check again later.</string>
     <plurals name="quick_because_busy_minutes">
         <item quantity="one">Too many deep checks from your network just now, so here\'s a quick check. Try a deep check again in %d minute.</item>

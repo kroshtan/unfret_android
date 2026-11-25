@@ -10,7 +10,7 @@ import java.net.URI
  * `unfret.net/support`. The Google Play build (the `play` build type, the app bundle uploaded to Play) has no donate or
  * support link anywhere (Google Play's payments policy): it sends `X-Unfret-Donate: off`, so the server's words leave
  * donations out too, and while free deep checks are paused it says only "Free checks run on donations. Quick checks
- * still work; deep checks are back next month. More info at unfret.net", linking to the home page. Neither build shows
+ * still work; deep checks are back tomorrow. More info at unfret.net", linking to the home page. Neither build shows
  * a price or a purchase button.
  *
  * Decided when the app is built, not from the installer at run time: Google's review and pre-launch devices needn't
