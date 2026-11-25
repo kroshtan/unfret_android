@@ -18,7 +18,6 @@ import android.webkit.WebSettings
 import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -28,7 +27,6 @@ import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
 import org.json.JSONObject
 import java.util.concurrent.ExecutorService
@@ -57,30 +55,21 @@ class CheckActivity : AppCompatActivity() {
     private lateinit var quickHint: TextView
     private lateinit var resultView: ResultView
 
-    /** The pass, or null: without one only the free quick check runs. */
-    private var key: String? = null
     private lateinit var base: String
     private var bundle: String = ""
 
-    /** The check on screen and the request it was made from, for "Wrong result?". */
-    private var shown: AnalysisResult? = null
-    private var shownRequest: JSONObject? = null
-
-    /** A check is being read or sent: the button does nothing until it's over (each check costs one). */
+    /** A check is being read or sent: the button does nothing until it's over. */
     private var busy = false
     private var pollingSince = 0L
 
     /** The check being read is the free quick check. */
     private var quick = false
 
-    /** The pass's balance, once the server has said ([QuickCheck.offer]). */
-    private var credits: Credits? = null
-
-    /** Why the server refused a deep check on this screen (no checks, or today's free ones used): quick checks then. */
-    private var deepRefused: Problem? = null
+    /** Free deep checks are paused (the month's spend ceiling), as the server said: quick checks then. */
+    private var paused = false
 
     /** Said above a result that was meant to be a deep check and became a quick one. */
-    private var quickNote: Int? = null
+    private var quickNote: CharSequence? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -93,7 +82,7 @@ class CheckActivity : AppCompatActivity() {
             return
         }
         if (!settings.consented) {
-            // Set up first (the intro, then a pass); the link waits on the home screen.
+            // The intro first; the link waits on the home screen.
             Toast.makeText(this, R.string.setup_first, Toast.LENGTH_SHORT).show()
             startActivity(
                 Intent(this, MainActivity::class.java)
@@ -103,8 +92,6 @@ class CheckActivity : AppCompatActivity() {
             finish()
             return
         }
-        // Without a pass the page still opens: the quick check is free for everyone.
-        key = settings.vault.load()
         base = settings.apiBase
         if (!SharedLink.isCheckable(url, base)) {
             Toast.makeText(this, R.string.link_not_checkable, Toast.LENGTH_LONG).show()
@@ -127,6 +114,7 @@ class CheckActivity : AppCompatActivity() {
         action = findViewById(R.id.check_page)
         quickButton = findViewById(R.id.quick_check)
         quickHint = findViewById(R.id.quick_hint)
+        linkable(status)
         quickButton.setOnClickListener { startCheck(quick = true) }
         resultView = ResultView(findViewById(R.id.result_content), layoutInflater)
 
@@ -136,18 +124,16 @@ class CheckActivity : AppCompatActivity() {
         resultView.onDone = { finish() }
         resultView.base = base
         resultView.loadImage = ::loadThumbnail
-        resultView.onReport = ::askReport
         resultView.onObject = { openInBrowser(Storefront.current.infoPage(base, "/objection")) }
-        resultView.onDeepHint = { runDeep ->
-            // A deep check of the same page, charged as any (free checks first), or getting checks: on the home screen
-            // without a pass (its free checks), at the checkout with one.
-            if (key == null) {
-                startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
-            } else if (runDeep) {
-                showPage()
-                startCheck()
-            } else {
-                openInBrowser(checkoutUrl(base, hasKey = true))
+        resultView.onDeepHint = { action ->
+            when (action) {
+                DeepCheck.Action.RUN_DEEP -> {
+                    showPage()
+                    startCheck()
+                }
+                // The direct download only: Storefront.deepHint takes this button out of the Play build.
+                DeepCheck.Action.DONATE -> openInBrowser(Storefront.current.donateUrl(base))
+                DeepCheck.Action.NONE -> {}
             }
         }
         onBackPressedDispatcher.addCallback(
@@ -165,22 +151,23 @@ class CheckActivity : AppCompatActivity() {
         setUpWebView()
         forgetBrowsingData()
         setReady(false)
-        loadCredits()
+        loadFreeChecks()
         web.loadUrl(url)
     }
 
-    /** The pass's balance, so a pass without deep checks to use is offered the quick check first. */
-    private fun loadCredits() {
-        val pass = key ?: return
+    private fun api() = UnfretApi(base, HttpUrlTransport(), Storefront.current.donateOff)
+
+    /** Whether free deep checks are paused this month, so the quick check is offered first. */
+    private fun loadFreeChecks() {
         background.execute {
             val known = try {
-                UnfretApi(base, pass, HttpUrlTransport()).credits()
+                api().freeChecks()
             } catch (_: Exception) {
                 null // the check itself says what's wrong
             }
             runOnUiThread {
-                if (isDestroyed || known == null) return@runOnUiThread
-                credits = known
+                if (isDestroyed || known == null || !known.paused) return@runOnUiThread
+                paused = true
                 if (!busy && !resultPanel.isVisible) setReady(action.isEnabled)
             }
         }
@@ -277,16 +264,12 @@ class CheckActivity : AppCompatActivity() {
     }
 
     private fun setReady(ready: Boolean) {
-        val offer = QuickCheck.offer(key != null, credits, deepRefused)
-        status.setText(
-            when {
-                !ready -> R.string.page_loading
-                offer.why == QuickCheck.Why.NO_PASS -> R.string.page_ready_no_pass
-                offer.why == QuickCheck.Why.NO_CHECKS -> R.string.problem_no_checks
-                offer.why == QuickCheck.Why.FREE_PAUSED -> R.string.problem_free_paused
-                else -> R.string.page_ready
-            },
-        )
+        val offer = QuickCheck.offer(paused)
+        status.text = when {
+            !ready -> getString(R.string.page_loading)
+            offer.paused -> pauseMessage(base)
+            else -> getString(R.string.page_ready)
+        }
         val quickMain = offer.main == QuickCheck.Main.QUICK
         action.setText(if (quickMain) R.string.quick_check else R.string.check_page)
         action.contentDescription = if (quickMain) getString(R.string.quick_check_described) else null
@@ -342,14 +325,12 @@ class CheckActivity : AppCompatActivity() {
 
     private fun send(extraction: JSONObject) {
         status.setText(R.string.sending)
-        val pass = key
-        val asQuick = quick || pass == null
+        val asQuick = quick || paused
         background.execute {
             var progress = Progress()
-            var request: JSONObject? = null
-            var refused: Problem? = null
+            var refused: ApiError? = null
             val outcome = try {
-                val api = UnfretApi(base, pass, HttpUrlTransport())
+                val api = api()
                 val onStep: (Step) -> Unit = { step ->
                     progress.add(step)
                     val checks = progress.checks
@@ -364,19 +345,28 @@ class CheckActivity : AppCompatActivity() {
                         }
                     }
                 }
-                var body = AnalyzeRequest.fromExtraction(extraction, asQuick)
-                request = body
-                val result = try {
-                    api.analyze(body, onStep)
-                } catch (e: ApiError) {
-                    // As the extension: a deep check that can't be paid for becomes a quick one, free, saying why.
-                    val problem = Problem.of(e)
-                    if (asQuick || !QuickCheck.fallsBackToQuick(problem)) throw e
-                    refused = problem
-                    body = AnalyzeRequest.fromExtraction(extraction, quick = true)
-                    request = body
-                    progress = Progress() // the quick check's own checks, as its result counts them
-                    api.analyze(body, onStep)
+                val result = if (asQuick) {
+                    api.analyze(AnalyzeRequest.fromExtraction(extraction, quick = true), onStep)
+                } else {
+                    try {
+                        // The free deep check's proof of work, on this worker thread (ProofOfWork spreads it over the
+                        // phone's cores); the screen closing interrupts it.
+                        api.deepCheck(
+                            AnalyzeRequest.fromExtraction(extraction),
+                            solve = { challenge ->
+                                runOnUiThread { if (!isDestroyed) status.setText(R.string.solving) }
+                                ProofOfWork.solve(challenge.challenge, challenge.bits)
+                            },
+                            onSolved = { runOnUiThread { if (!isDestroyed) status.setText(R.string.sending) } },
+                            onStep = onStep,
+                        ).first
+                    } catch (e: ApiError) {
+                        // As the extension: a deep check that can't run now becomes a quick one, saying why.
+                        if (!QuickCheck.fallsBackToQuick(Problem.of(e))) throw e
+                        refused = e
+                        progress = Progress() // the quick check's own checks, as its result counts them
+                        api.analyze(AnalyzeRequest.fromExtraction(extraction, quick = true), onStep)
+                    }
                 }
                 Result.success(result)
             } catch (e: IllegalArgumentException) {
@@ -387,14 +377,27 @@ class CheckActivity : AppCompatActivity() {
             runOnUiThread {
                 if (isDestroyed) return@runOnUiThread
                 busy = false
-                shownRequest = request
-                refused?.let {
-                    deepRefused = it
-                    quickNote = if (it == Problem.FREE_PAUSED) R.string.quick_because_paused else R.string.quick_because_no_checks
-                }
+                quickNote = refused?.let(::fallbackNote)
                 outcome.fold(::showResult, ::showProblem)
             }
         }
+    }
+
+    /** Why a deep check became a quick one, above its result. */
+    private fun fallbackNote(error: ApiError): CharSequence = when (Problem.of(error)) {
+        Problem.PAUSED -> {
+            paused = true
+            pauseMessage(base)
+        }
+        Problem.TOO_MANY -> {
+            val minutes = error.retryAfterS?.let { (it + 59) / 60 }?.coerceAtLeast(1)
+            if (minutes != null) {
+                resources.getQuantityString(R.plurals.quick_because_busy_minutes, minutes, minutes)
+            } else {
+                getString(R.string.quick_because_busy)
+            }
+        }
+        else -> getString(R.string.quick_because_unavailable)
     }
 
     private class ReadError(cause: Throwable) : Exception(cause)
@@ -405,30 +408,15 @@ class CheckActivity : AppCompatActivity() {
             return
         }
         val problem = Problem.of(error)
-        status.setText(problem.message())
+        status.text = if (problem == Problem.PAUSED) pauseMessage(base) else getString(problem.message())
         action.isEnabled = true
-        when (problem) {
-            Problem.BAD_KEY -> {
-                // The stored pass ended (Unfret retired its old passes, or it was replaced): the home screen says so.
-                key?.let { settings.vault.rejected(it) }
-                status.setText(R.string.pass_ended)
-                action.setText(R.string.open_home)
-                action.setOnClickListener {
-                    startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP))
-                    finish()
-                }
-            }
-            else -> {
-                action.setText(R.string.try_again)
-                val again = quick
-                action.setOnClickListener { startCheck(again) }
-            }
-        }
+        action.setText(R.string.try_again)
+        val again = quick
+        action.setOnClickListener { startCheck(again) }
     }
 
     private fun showResult(result: AnalysisResult) {
-        shown = result
-        resultView.show(result, quickNote?.let(::getString))
+        resultView.show(result, quickNote)
         web.visibility = View.INVISIBLE
         bar.visibility = View.GONE
         progress.visibility = View.INVISIBLE
@@ -444,65 +432,6 @@ class CheckActivity : AppCompatActivity() {
             val bytes = UnfretApi.thumbnail(url, base, HttpUrlTransport())
             val bitmap = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
             runOnUiThread { if (!isDestroyed) done(bitmap) }
-        }
-    }
-
-    /** "Wrong result?": what the page really is, with what a report shares, then send it (`POST /v1/reports`). */
-    private fun askReport() {
-        val result = shown ?: return
-        val token = result.reportToken ?: return
-        val request = shownRequest ?: return
-        val view = layoutInflater.inflate(R.layout.dialog_report, null)
-        val reasons = view.findViewById<RadioGroup>(R.id.report_reasons)
-        val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.report_title)
-            .setView(view)
-            .setPositiveButton(R.string.report_send, null)
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-        dialog.setOnShowListener {
-            val send = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
-            send.isEnabled = false
-            reasons.setOnCheckedChangeListener { _, _ -> send.isEnabled = true }
-            send.setOnClickListener {
-                val reason = when (reasons.checkedRadioButtonId) {
-                    R.id.reason_real_brand -> "real_brand"
-                    R.id.reason_scam -> "scam"
-                    R.id.reason_junk -> "junk"
-                    else -> "other"
-                }
-                dialog.dismiss()
-                sendReport(result, token, reason, request)
-            }
-        }
-        dialog.show()
-    }
-
-    private fun sendReport(result: AnalysisResult, token: String, reason: String, request: JSONObject) {
-        resultView.setReportable(false)
-        Toast.makeText(this, R.string.report_sending, Toast.LENGTH_SHORT).show()
-        background.execute {
-            val message = try {
-                when (UnfretApi(base, key, HttpUrlTransport()).report(token, reason, request, result.explanation, result.verdictJson)) {
-                    "already_reported" -> R.string.report_already_reported
-                    "already_known" -> R.string.report_already_known
-                    else -> R.string.report_queued
-                }
-            } catch (e: ApiError) {
-                when (e.code) {
-                    "REPORT_LIMIT" -> R.string.report_limit
-                    "ALREADY_REPORTED_BY_YOU" -> R.string.report_by_you
-                    "BAD_REPORT_TOKEN" -> R.string.report_expired
-                    else -> R.string.report_failed
-                }
-            } catch (_: Exception) {
-                R.string.report_failed
-            }
-            runOnUiThread {
-                if (isDestroyed) return@runOnUiThread
-                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
-                if (message == R.string.report_failed) resultView.setReportable(true)
-            }
         }
     }
 

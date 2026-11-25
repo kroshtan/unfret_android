@@ -5,7 +5,7 @@
 
     <!-- Intro and consent -->
     <string name="intro_title">How Unfret works</string>
-    <string name="intro_body">Unfret looks at a shop page, an ad or a service provider\'s page and tells you in plain words whether it all adds up.\n\n• Share a link to Unfret from any app, or paste it here. The page opens inside Unfret, on your phone, over your own connection, so you can accept a cookie banner or solve a captcha.\n\n• Nothing is read until you tap Check this page. Then Unfret reads the page on your phone: the product facts and the visible text. Account menus, greetings, forms, checkout and delivery areas, and any address that isn\'t the business\'s own are removed first. On a private seller\'s ad, the seller\'s name is never read.\n\n• Only those facts, that text and the page address are sent, to unfret.net, with your Unfret pass. Nothing about you or your phone.\n\n• Once you agree, Unfret makes its own pass on this phone, with free deep checks: no code, no account, nothing to buy. Each deep check uses one; after them, quick checks stay free. More checks are bought on unfret.net, not in this app.\n\n• The app keeps only your pass on the phone, encrypted. Android\'s backup keeps one yes or no, in your own Google backup: that this phone already got its free checks. Never your pass. Pages you open aren\'t kept: their cookies and cache are deleted when you close them.</string>
+    <string name="intro_body">Unfret looks at a shop page, an ad or a service provider\'s page and tells you in plain words what the risks are, and why.\n\n• Share a link to Unfret from any app, or paste it here. The page opens inside Unfret, on your phone, over your own connection, so you can accept a cookie banner or solve a captcha.\n\n• Nothing is read until you tap Check this page. Then Unfret reads the page on your phone: the product facts and the visible text. Account menus, greetings, forms, checkout and delivery areas, and any address that isn\'t the business\'s own are removed first. On a private seller\'s ad, the seller\'s name is never read.\n\n• Only those facts, that text and the page address are sent, to unfret.net. Nothing about you or your phone: no account, no pass, no device ID.\n\n• Checks are free. Before a deep check your phone solves a small puzzle, which keeps free checks fair.\n\n• The app keeps nothing about the pages you check. Their cookies and cache are deleted when you close them.</string>
     <string name="intro_agree">I agree</string>
     <string name="privacy_policy">Privacy policy</string>
     <string name="about">About &amp; privacy</string>
@@ -17,101 +17,12 @@
     <string name="link_invalid">That isn\'t a web link.</string>
     <string name="link_not_checkable">This page can\'t be checked.</string>
     <string name="check">Check</string>
-    <string name="pending_link">Set up your pass below, then check this link.</string>
+    <string name="pending_link">Tap Check when you\'re ready.</string>
+    <string name="free_line">Checks are free. No account, no pass.</string>
+    <string name="support_unfret">Support Unfret</string>
 
-    <string name="account_title">Your checks</string>
-    <string name="no_key_free">Get a few free checks to start: no account, no e-mail. Or paste the Unfret pass you have.</string>
-    <string name="no_key_had_free">This phone has had its free checks. Get a new pass for free quick checks, buy checks, or paste the pass you have.</string>
-    <string name="make_pass_free">Get your free checks</string>
-    <string name="make_pass">Get a new pass</string>
-    <string name="key_in_use">Unfret pass %1$s on this phone</string>
-    <string name="credits_loading">Looking up your checks…</string>
-    <plurals name="free_checks">
-        <item quantity="one">You have %d free check</item>
-        <item quantity="other">You have %d free checks</item>
-    </plurals>
-    <plurals name="checks_left">
-        <item quantity="one">%d check left</item>
-        <item quantity="other">%d checks left</item>
-    </plurals>
-    <string name="get_checks">Get checks</string>
-    <string name="have_code">Have a code?</string>
-    <string name="pass_ended">Unfret has a new free start: your old pass has ended.</string>
-    <string name="pass_ended_next">A new pass comes with free deep checks.</string>
-    <string name="pass_ended_next_had_free">Quick checks stay free; deep checks come in packs.</string>
-    <string name="new_pass">Get a new pass</string>
-    <string name="paste_key">Paste your pass</string>
-    <string name="change_key">Change pass</string>
-    <string name="remove_key">Remove pass</string>
-    <string name="checks_on_website">Checks are bought on unfret.net. Come back here when you have your pass.</string>
-    <!-- The Google Play build (Storefront): no checkout, a gift code is redeemed in the app -->
-    <string name="no_deep_checks_left">You have no deep checks left. Quick checks are free.</string>
-    <string name="have_gift_code">Have a gift code?</string>
-    <string name="gift_code_title">Your gift code</string>
-    <string name="gift_code_body">It starts with ufi_. Its checks go onto the Unfret pass on this phone.</string>
-    <string name="gift_code_hint">ufi_…</string>
-    <string name="gift_code_empty">Type or paste the gift code.</string>
-    <string name="redeem">Redeem</string>
-    <string name="redeeming">Redeeming the code…</string>
-    <!-- Why a gift code was refused (POST /v1/invites/redeem's error codes) -->
-    <string name="gift_code_invalid">That isn\'t a gift code (it starts with ufi_). Copy it again in full.</string>
-    <string name="gift_code_unknown">Unfret doesn\'t know this gift code. Copy it again in full.</string>
-    <string name="gift_code_used">This gift code has already been used.</string>
-    <string name="gift_code_own">This gift code came with this pass: give it to a friend.</string>
-    <string name="gift_code_monthly">You\'ve already used a gift code this month. This one still works next month, or give it to someone else.</string>
-    <string name="gift_code_ended">Codes like this have ended.</string>
-    <string name="gift_code_too_many">Too many codes tried from here. Wait a few minutes and try again.</string>
-    <plurals name="gift_code_added">
-        <item quantity="one">%d check added to your pass.</item>
-        <item quantity="other">%d checks added to your pass.</item>
-    </plurals>
 
-    <string name="key_dialog_title">Your Unfret pass</string>
-    <string name="key_dialog_body">It starts with ufk_. It is stored on this phone only, encrypted.</string>
-    <string name="key_hint">ufk_…</string>
-    <string name="save">Save</string>
-    <string name="cancel">Cancel</string>
-    <string name="key_invalid">That isn\'t an Unfret pass (it starts with ufk_). Copy it again in full.</string>
-    <string name="key_rejected">Unfret doesn\'t know this pass (or it was replaced with its backup code).</string>
-    <string name="checking_key">Checking the pass…</string>
-    <string name="remove_key_title">Remove the pass from this phone?</string>
-    <string name="remove_key_body">Its checks stay on the pass. Keep a copy of it (or its backup code) to use it again.</string>
-    <string name="remove">Remove</string>
 
-    <!-- The app's own pass, on first launch (the extension's welcome pages\' words) -->
-    <string name="setup_making_free">Getting your free checks ready…</string>
-    <string name="setup_making">Getting your Unfret pass ready…</string>
-    <string name="setup_making_body">This takes a few seconds. Unfret makes its own Unfret pass on this phone: no code, no account, nothing to buy.</string>
-    <string name="setup_slow">Still working: a new pass takes a small puzzle on the phone first, which keeps free checks fair.</string>
-    <string name="setup_free_body">No code, no account, nothing to buy. Before you pay on a marketplace or a web shop, for a second-hand ad, or to a tradesperson or local service, share the page to Unfret and it tells you in plain words whether it all adds up.</string>
-    <string name="setup_free_after">After your free checks, quick checks stay free: they read the page itself, by its rules. Deep checks, which also look the shop up elsewhere, come in packs with no subscription.</string>
-    <string name="setup_ready">Your Unfret pass is ready</string>
-    <string name="setup_had_free">This phone has had its free checks already, so your new Unfret pass starts without them. Quick checks stay free; for deep checks, buy a pack or use a gift code from a friend.</string>
-    <string name="setup_none_today">There were no free checks to give just now, so your new Unfret pass starts without them. Quick checks stay free; for deep checks, buy a pack or use a gift code from a friend.</string>
-    <string name="setup_paste_instead">Have a pass already? Paste it below.</string>
-    <string name="setup_failed">Your Unfret pass isn\'t ready yet</string>
-    <string name="setup_refused">Unfret couldn\'t make a new pass just now. Please try again later.</string>
-    <string name="got_it">Got it</string>
-
-    <!-- The backup code of the pass the app made -->
-    <string name="show_recovery">Backup code</string>
-    <string name="recovery_title">Your backup code</string>
-    <string name="recovery_body">Unfret made this pass on this phone, so this is its only backup. If you lose the phone or remove the app, this code gets you a new pass with the same checks on unfret.net (My checks). Keep it somewhere safe: anyone with it can use your checks.</string>
-    <string name="copy">Copy</string>
-    <string name="copied">Copied</string>
-
-    <!-- A pass from a link (the website\'s and the extension\'s words) -->
-    <string name="pass_offer_title">Use this pass here?</string>
-    <string name="pass_offer_body">You opened a link with Unfret pass %1$s. Use it only if it\'s your own: the checks you run here are paid from it.</string>
-    <string name="pass_offer_other">This phone already uses Unfret pass %1$s. Keep the current one if you didn\'t ask for this link yourself.</string>
-    <string name="pass_offer_moves_free">The free checks left on your free pass move to the new pass, so none are lost.</string>
-    <string name="pass_offer_use">Use this pass</string>
-    <string name="pass_offer_not_now">Not now</string>
-    <string name="pass_offer_switch">Use the new pass</string>
-    <string name="pass_offer_keep">Keep the current one</string>
-    <string name="pass_offer_same">Unfret pass %1$s is on this phone already.</string>
-    <string name="pass_taken">Your pass %1$s is on this phone now.</string>
-    <string name="pass_link_invalid">That link has no Unfret pass in it. Copy the link again in full.</string>
 
     <string name="dev_server">Use the dev server (dev.unfret.net, test network)</string>
     <string name="version">Version %1$s</string>
@@ -121,14 +32,20 @@
     <!-- Checking a page -->
     <string name="close">Close</string>
     <string name="page_loading">Loading the page… Accept a cookie banner or solve a captcha if one appears.</string>
-    <string name="page_ready">When the page shows the product or ad, tap Check this page. It uses one check.</string>
+    <string name="page_ready">When the page shows the product or ad, tap Check this page. Checks are free.</string>
     <string name="check_page">Check this page</string>
-    <string name="quick_check">Quick check (free)</string>
-    <string name="quick_check_described">Quick check, free. Reads this page only, by Unfret\'s rules.</string>
+    <string name="quick_check">Quick check</string>
+    <string name="quick_check_described">Quick check. Reads this page only, by Unfret\'s rules.</string>
     <string name="quick_hint">Reads this page only, by Unfret\'s rules.</string>
-    <string name="page_ready_no_pass">Quick checks are free, without a pass. For a deep check, get your free checks on the home screen.</string>
-    <string name="quick_because_no_checks">You have no checks left, so here\'s a quick check instead.</string>
-    <string name="quick_because_paused">Free deep checks are back tomorrow. Quick checks still work. Here\'s a quick check meanwhile.</string>
+    <!-- Free deep checks paused (the month's spend ceiling). The Google Play build has its own words (src/play/res) -->
+    <string name="paused_note">Free deep checks are paused until next month: they run on donations. Quick checks still work.</string>
+    <string name="quick_because_busy">Too many deep checks from your network just now, so here\'s a quick check. Try a deep check again later.</string>
+    <plurals name="quick_because_busy_minutes">
+        <item quantity="one">Too many deep checks from your network just now, so here\'s a quick check. Try a deep check again in %d minute.</item>
+        <item quantity="other">Too many deep checks from your network just now, so here\'s a quick check. Try a deep check again in %d minutes.</item>
+    </plurals>
+    <string name="quick_because_unavailable">Deep checks aren\'t available right now, so here\'s a quick check. Try again later.</string>
+    <string name="solving">Getting your free deep check ready…</string>
     <string name="reading_page">Reading the page on your phone…</string>
     <string name="sending">Checking…</string>
     <!-- An older server's progress: every step of the analysis -->
@@ -143,19 +60,15 @@
     </plurals>
     <string name="read_failed">Couldn\'t read this page. Wait until it has loaded and try again.</string>
     <string name="try_again">Try again</string>
-    <string name="setup_first">Set up Unfret first.</string>
+    <string name="setup_first">Read how Unfret works first.</string>
     <string name="no_link_shared">There was no web link in what was shared.</string>
     <string name="page_crashed">The page stopped working and was closed.</string>
 
     <!-- Problems (the extension\'s wording) -->
     <string name="problem_service_off">Unfret checks aren\'t available right now. Please try again later.</string>
-    <string name="problem_bad_key">Unfret doesn\'t know your pass. Check it on the home screen.</string>
-    <string name="problem_no_checks">You have no checks left. Quick checks are free: they read this page only.</string>
-    <string name="problem_free_paused">Free deep checks are back tomorrow. Quick checks still work.</string>
-    <string name="problem_too_many">Too many quick checks in a minute; wait a moment. No check was used.</string>
-    <string name="problem_failed">The check failed. No check was used.</string>
+    <string name="problem_too_many">Too many checks from your network just now. Wait a moment and try again.</string>
+    <string name="problem_failed">The check failed. Please try again.</string>
     <string name="problem_offline">Can\'t reach Unfret. Check your connection and try again.</string>
-    <string name="open_home">Back to the home screen</string>
 
     <!-- Result -->
     <string name="result_title">Result</string>
@@ -168,7 +81,6 @@
     <string name="reason_overall_title">Nothing clear-cut</string>
     <string name="reason_overall_detail">Nothing on the page stands out by itself, but taken together it scored lower than most.</string>
     <string name="not_assessed">This page couldn\'t be checked</string>
-    <string name="no_check_used">No check was used.</string>
     <string name="reasons_title">What we noticed</string>
     <string name="positives_title">What looks good</string>
     <!-- The result card, in the website's and the extension's words -->
@@ -195,12 +107,11 @@
     </plurals>
     <!-- After an area's name: "Who's behind the shop · 4 checks" -->
     <string name="check_count">%1$s · %2$s</string>
-    <!-- What a check cost, for an older server that doesn't say it in words (the server's own sentence has the count) -->
-    <string name="charge_quick">Quick checks are free.</string>
-    <string name="charge_not_assessed">This page couldn\'t be assessed, so no check was used.</string>
-    <string name="charge_repeat">You checked this page recently, so no new check was used.</string>
-    <string name="charge_free">This check used one of your free checks.</string>
-    <string name="charge_bought">This check used one of your checks.</string>
+    <!-- What a check was, for a result without the server's own sentence -->
+    <string name="charge_quick">Quick checks read this page only.</string>
+    <string name="charge_not_assessed">This page couldn\'t be assessed.</string>
+    <string name="charge_repeat">This page was checked recently: this is that result.</string>
+    <string name="charge_free">Deep checks are free.</string>
     <string name="check_checked">nothing to note</string>
     <string name="check_concern">something to note</string>
     <string name="check_not_checked">not checked</string>
@@ -208,23 +119,7 @@
     <string name="same_product_own_photo">This page\'s product photo</string>
     <string name="same_product_other_photo">The same photo on %1$s</string>
     <string name="same_product_other_photo_any">The same photo on another shop</string>
-    <string name="wrong_result">Wrong result?</string>
     <string name="object_result">Your shop? Object to this result</string>
-    <string name="report_title">What is this page really?</string>
-    <string name="report_real_brand">A real brand or shop</string>
-    <string name="report_scam">A scam</string>
-    <string name="report_junk">Junk or dropshipping</string>
-    <string name="report_other">Something else</string>
-    <string name="report_consent">Sending this shares this one check\'s product facts, page text and result with Unfret for review. Personal details are removed first; once reviewed, it is kept without any link to you. If the score was far off, you get free checks.</string>
-    <string name="report_send">Send report</string>
-    <string name="report_sending">Sending…</string>
-    <string name="report_queued">Thanks! We\'ll review this page. If we got it badly wrong, you get free checks.</string>
-    <string name="report_already_reported">Thanks! Someone reported this page first; your report counts as confirmation.</string>
-    <string name="report_already_known">Thanks! We reviewed this page recently.</string>
-    <string name="report_limit">You\'ve used this month\'s reports. Thank you!</string>
-    <string name="report_by_you">You\'ve already reported this page.</string>
-    <string name="report_expired">This check can\'t be reported any more; check the page again first.</string>
-    <string name="report_failed">The report didn\'t go through. Please try again later.</string>
     <string name="back_to_page">Back to the page</string>
     <string name="done">Done</string>
     <string name="result_notice">Unfret reports risk signals from what the page shows; it never calls a shop a scam. The page may change after this check.</string>

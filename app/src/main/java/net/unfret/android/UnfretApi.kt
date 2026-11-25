@@ -5,14 +5,10 @@ import java.io.BufferedReader
 import java.io.Closeable
 import java.io.InputStream
 
-/** An error answer from the API, in its `{detail, error_code}` shape. */
-class ApiError(val status: Int, val code: String, detail: String) : Exception(detail) {
-    val badKey: Boolean get() = status == 401
-    val needsChecks: Boolean get() = status == 402 || code == "INSUFFICIENT_CREDITS"
-    val serviceOff: Boolean get() = status == 503
-
-    /** Only free checks are left, and today's are all used (429): they are back tomorrow, quick checks still work. */
-    val freePaused: Boolean get() = code == "FREE_CHECKS_PAUSED"
+/** An error answer from the API, in its `{detail, error_code, metadata}` shape. */
+class ApiError(val status: Int, val code: String, detail: String, val metadata: JSONObject? = null) : Exception(detail) {
+    /** How long to wait before trying again, when the server says (`metadata.retry_after_s`). */
+    val retryAfterS: Int? get() = metadata?.optInt("retry_after_s", -1)?.takeIf { it >= 0 }
 }
 
 data class HttpRequest(val method: String, val url: String, val headers: Map<String, String>, val body: String?)
@@ -58,36 +54,74 @@ fun interface Transport {
 }
 
 /**
- * The Unfret API as the app uses it: remaining checks and the streamed analysis, with the user's API key as
- * `Authorization: Bearer ufk_…`. Requests carry nothing else about the user or the phone. Without a key ([key] null)
- * only the free quick check can be asked for: it goes without `Authorization`.
+ * The Unfret API as the app uses it: free checks, quick and deep, with no pass and nothing that names the user or the
+ * phone (contract v1, "Free checks for shoppers"). A deep check solves a proof of work first ([deepCheck]).
+ *
+ * [donateOff]: the Google Play build sends `X-Unfret-Donate: off`, so the server's words and links never mention
+ * donations ([Storefront]).
  */
-class UnfretApi(private val base: String, private val key: String?, private val transport: Transport) {
+class UnfretApi(private val base: String, private val transport: Transport, private val donateOff: Boolean) {
     init {
         require(base in BASES) { "not an Unfret server: $base" }
     }
 
     private fun headers(json: Boolean): Map<String, String> = buildMap {
-        if (key != null) put("Authorization", "Bearer $key")
         // The app is in English, like the extension; the API answers in English anyway.
         put("Accept-Language", "en")
         put("User-Agent", USER_AGENT)
+        if (donateOff) put("X-Unfret-Donate", "off")
         if (json) put("Content-Type", "application/json")
     }
 
-    /** `GET /v1/credits`. */
-    fun credits(): Credits =
-        transport.send(HttpRequest("GET", "$base/v1/credits", headers(false), null)).use { response ->
+    private fun <T> get(path: String, parse: (JSONObject) -> T): T =
+        transport.send(HttpRequest("GET", "$base$path", headers(false), null)).use { response ->
             if (response.status !in 200..299) throw errorFrom(response)
-            Credits.parse(JSONObject(response.reader.readText()))
+            parse(JSONObject(response.reader.readText()))
         }
+
+    /** `GET /v1/pricing`'s `free`: whether free deep checks are paused (the month's spend ceiling). */
+    fun freeChecks(): FreeChecks = get("/v1/pricing") { FreeChecks.parse(it.optJSONObject("free")) }
+
+    /** `GET /v1/analyze/challenge`: the proof of work one free deep check needs (single use, 5 minutes). */
+    fun challenge(): DeepChallenge = get("/v1/analyze/challenge", DeepChallenge::parse)
+
+    /**
+     * A free deep check of [page] (the analysed request without a tier): a challenge, solved by [solve] (blocking,
+     * off the main thread), then the check with its `proof_of_work`. A refused or expired challenge (400
+     * `BAD_CHALLENGE`, 428 `PROOF_OF_WORK_REQUIRED`) is fetched and solved once more. A paused challenge is never
+     * solved: it throws [ApiError] `FREE_CHECKS_PAUSED`, as the check would. Returns the result and the request
+     * exactly as sent.
+     */
+    fun deepCheck(
+        page: JSONObject,
+        solve: (DeepChallenge) -> String,
+        onSolved: () -> Unit = {},
+        onStep: (Step) -> Unit = {},
+    ): Pair<AnalysisResult, JSONObject> {
+        require(page.optString("tier") != "quick") { "a quick check needs no proof of work" }
+        var attempt = 0
+        while (true) {
+            val challenge = challenge()
+            if (challenge.paused) throw ApiError(429, PAUSED, "Free deep checks are paused.", challenge.pause)
+            val solution = solve(challenge)
+            onSolved()
+            val body = JSONObject(page.toString()).put(
+                "proof_of_work",
+                JSONObject().put("challenge", challenge.challenge).put("solution", solution),
+            )
+            try {
+                return analyze(body, onStep) to body
+            } catch (e: ApiError) {
+                if (attempt++ > 0 || e.code !in RETRY_CHALLENGE) throw e
+            }
+        }
+    }
 
     /**
      * `POST /v1/analyze/stream`: calls [onStep] with each analysis step as it finishes, and returns the result.
      * Throws [ApiError] for an error answer or event, IOException when the connection fails.
      */
     fun analyze(body: JSONObject, onStep: (Step) -> Unit = {}): AnalysisResult {
-        require(key != null || body.optString("tier") == "quick") { "a deep check needs a pass" }
         val request = HttpRequest(
             "POST",
             "$base/v1/analyze/stream",
@@ -114,6 +148,7 @@ class UnfretApi(private val base: String, private val key: String?, private val 
                         data.optInt("status", 500),
                         data.optString("error_code", "INTERNAL_ERROR"),
                         data.optString("detail", "Analysis failed."),
+                        data.optJSONObject("metadata"),
                     )
                 }
             }
@@ -121,93 +156,27 @@ class UnfretApi(private val base: String, private val key: String?, private val 
         }
     }
 
-    /**
-     * `POST /v1/keys/move-free-checks`: this pass's free checks left go to the pass [toKeyId] (the app switching from
-     * the pass it made for itself to one the user brought). Returns how many moved.
-     */
-    fun moveFreeChecks(toKeyId: String): Int {
-        val body = JSONObject().put("to_key_id", toKeyId).toString()
-        return transport.send(HttpRequest("POST", "$base/v1/keys/move-free-checks", headers(true), body)).use { response ->
-            if (response.status !in 200..299) throw errorFrom(response)
-            JSONObject(response.reader.readText()).optInt("moved", 0)
-        }
-    }
-
-    /**
-     * `POST /v1/invites/redeem`: a gift code (`ufi_…`, as typed; the server ignores case and surrounding spaces) adds
-     * its checks to this pass. Returns how many it added. Throws [ApiError] for a refusal, by its error code
-     * ([giftCodeRefusal]: not a code, unknown, used, from this pass's own pack, one this month already, too many tries).
-     */
-    fun redeemGiftCode(code: String): Int {
-        val body = JSONObject().put("code", code.trim()).toString()
-        return transport.send(HttpRequest("POST", "$base/v1/invites/redeem", headers(true), body)).use { response ->
-            if (response.status !in 200..299) throw errorFrom(response)
-            JSONObject(response.reader.readText()).optInt("checks_added", 0).coerceAtLeast(0)
-        }
-    }
-
-    /**
-     * `POST /v1/reports`: "Wrong result?". [request] is the analysed request exactly as sent, [verdict] and
-     * [explanation] the result as returned; [reason] one of real_brand, scam, junk, other. The user agreed to share
-     * this one check's page facts, page text and result for review (`consent`). Returns the outcome: queued,
-     * already_reported or already_known. Throws [ApiError] for an error answer.
-     */
-    fun report(token: String, reason: String, request: JSONObject, explanation: String, verdict: JSONObject?): String {
-        val body = JSONObject()
-            .put("report_token", token)
-            .put("reason", reason)
-            .put("consent", true)
-            .put("request", request)
-            .put("explanation", explanation)
-        if (verdict != null) body.put("verdict", verdict)
-        return transport.send(HttpRequest("POST", "$base/v1/reports", headers(true), body.toString())).use { response ->
-            if (response.status !in 200..299) throw errorFrom(response)
-            JSONObject(response.reader.readText()).optString("status", "queued")
-        }
-    }
-
     companion object {
-        /** `GET /v1/keys/challenge`: a proof-of-work challenge for a new pass (no pass needed). */
-        fun keyChallenge(base: String, transport: Transport): KeyChallenge {
-            require(base in BASES) { "not an Unfret server: $base" }
-            val headers = mapOf("Accept-Language" to "en", "User-Agent" to USER_AGENT)
-            return transport.send(HttpRequest("GET", "$base/v1/keys/challenge", headers, null)).use { response ->
-                if (response.status !in 200..299) throw errorFrom(response)
-                KeyChallenge.parse(JSONObject(response.reader.readText()))
-            }
-        }
-
-        /**
-         * `POST /v1/keys`: a new pass for a solved challenge, with free checks when [free] (the server gives them only
-         * within its per-network daily limit: [IssuedKey.freeChecks] says how many came). Only the challenge, its
-         * solution and that yes/no are sent: nothing about the phone.
-         */
-        fun createKey(base: String, transport: Transport, challenge: String, solution: String, free: Boolean): IssuedKey {
-            require(base in BASES) { "not an Unfret server: $base" }
-            val headers = mapOf("Accept-Language" to "en", "User-Agent" to USER_AGENT, "Content-Type" to "application/json")
-            val body = JSONObject().put("challenge", challenge).put("solution", solution).put("free", free).toString()
-            return transport.send(HttpRequest("POST", "$base/v1/keys", headers, body)).use { response ->
-                if (response.status !in 200..299) throw errorFrom(response)
-                IssuedKey.parse(JSONObject(response.reader.readText()))
-            }
-        }
+        const val PAUSED = "FREE_CHECKS_PAUSED"
+        private val RETRY_CHALLENGE = setOf("BAD_CHALLENGE", "PROOF_OF_WORK_REQUIRED")
 
         private fun errorFrom(response: HttpResponse): ApiError {
-        val body = try {
-            JSONObject(response.reader.readText())
-        } catch (_: Exception) {
-            JSONObject()
+            val body = try {
+                JSONObject(response.reader.readText())
+            } catch (_: Exception) {
+                JSONObject()
+            }
+            return ApiError(
+                response.status,
+                body.optString("error_code").ifEmpty { "HTTP_${response.status}" },
+                body.optString("detail").ifEmpty { "HTTP ${response.status}" },
+                body.optJSONObject("metadata"),
+            )
         }
-        return ApiError(
-            response.status,
-            body.optString("error_code").ifEmpty { "HTTP_${response.status}" },
-            body.optString("detail").ifEmpty { "HTTP ${response.status}" },
-        )
-    }
 
         /**
-         * A photo from the API's own thumbnail proxy ([apiImage] decides which URLs qualify), without the key: the
-         * thumbnails are public. Returns null when it can't be loaded.
+         * A photo from the API's own thumbnail proxy ([apiImage] decides which URLs qualify). Returns null when it
+         * can't be loaded.
          */
         fun thumbnail(url: String, base: String, transport: Transport): ByteArray? {
             if (base !in BASES || apiImage(url, base) == null) return null

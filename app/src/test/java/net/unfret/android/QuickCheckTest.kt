@@ -3,93 +3,146 @@ package net.unfret.android
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.BufferedReader
-import java.io.StringReader
 
+/** Free checks, quick and deep, with no pass: what the screen offers, and the deep check's proof of work. */
 class QuickCheckTest {
-    private fun offer(hasPass: Boolean = true, credits: Credits? = null, refused: Problem? = null) =
-        QuickCheck.offer(hasPass, credits, refused)
+    private val result = "event: result\ndata: {\"score\": 80, \"explanation\": \"Fine.\", \"charged\": false, \"free_check\": true}\n\n"
+    private val challenge = """{"challenge":"c.1.4.m","bits":4,"expires_at":1.0,"paused":false}"""
+    private val page = JSONObject("""{"url":"https://shop.test/p","page_facts":{"url":"https://shop.test/p"}}""")
 
     @Test
-    fun `with checks to use, the deep check first and the quick check under it`() {
-        val withChecks = offer(credits = Credits(7, null, freeLeft = 5))
-        assertEquals(QuickCheck.Main.DEEP, withChecks.main)
-        assertNull(withChecks.why)
-        assertTrue(withChecks.quickOption)
-        // Before the balance is known, the same.
-        assertEquals(QuickCheck.Offer(QuickCheck.Main.DEEP, null), offer(credits = null))
-        // Free checks paused, but bought ones left: the deep check runs on those.
-        assertTrue(offer(credits = Credits(4, null, freeLeft = 3, freePaused = true)).quickOption)
-    }
-
-    @Test
-    fun `no checks left - the main button is the quick check, offered once`() {
-        val none = offer(credits = Credits(0, null))
-        assertEquals(QuickCheck.Offer(QuickCheck.Main.QUICK, QuickCheck.Why.NO_CHECKS), none)
-        assertFalse(none.quickOption)
-    }
-
-    @Test
-    fun `only free checks while today's are used - the quick check`() {
-        val paused = offer(credits = Credits(3, null, freeLeft = 3, freePaused = true))
-        assertEquals(QuickCheck.Offer(QuickCheck.Main.QUICK, QuickCheck.Why.FREE_PAUSED), paused)
+    fun `the deep check first and the quick check under it, only the quick check while paused`() {
+        val open = QuickCheck.offer(paused = false)
+        assertEquals(QuickCheck.Main.DEEP, open.main)
+        assertTrue(open.quickOption)
+        val paused = QuickCheck.offer(paused = true)
+        assertEquals(QuickCheck.Main.QUICK, paused.main)
         assertFalse(paused.quickOption)
     }
 
     @Test
-    fun `without a pass - the quick check, which needs none`() {
-        assertEquals(QuickCheck.Offer(QuickCheck.Main.QUICK, QuickCheck.Why.NO_PASS), offer(hasPass = false))
+    fun `a deep check that can't run now becomes a quick one, others don't`() {
+        assertTrue(QuickCheck.fallsBackToQuick(Problem.PAUSED))
+        assertTrue(QuickCheck.fallsBackToQuick(Problem.TOO_MANY))
+        assertTrue(QuickCheck.fallsBackToQuick(Problem.SERVICE_OFF))
+        assertFalse(QuickCheck.fallsBackToQuick(Problem.FAILED))
+        assertFalse(QuickCheck.fallsBackToQuick(Problem.OFFLINE))
     }
 
     @Test
-    fun `a deep check the server refused makes the quick check the main one`() {
-        assertEquals(QuickCheck.Why.NO_CHECKS, offer(credits = Credits(2, null), refused = Problem.NO_CHECKS).why)
-        assertEquals(QuickCheck.Why.FREE_PAUSED, offer(credits = Credits(2, null), refused = Problem.FREE_PAUSED).why)
+    fun `a free deep check - the challenge, solved, then the check with its proof and no pass`() {
+        val transport = RoutedTransport(
+            mapOf(
+                "GET /v1/analyze/challenge" to listOf(200 to challenge),
+                "POST /v1/analyze/stream" to listOf(200 to result),
+            ),
+        )
+        val solved = mutableListOf<DeepChallenge>()
+        val (answer, sent) = UnfretApi(UnfretApi.DEV, transport, donateOff = false).deepCheck(page, solve = { c ->
+            solved += c
+            ProofOfWork.solve(c.challenge, c.bits)
+        })
+
+        assertEquals(80, answer.score)
+        assertEquals(listOf("GET /v1/analyze/challenge", "POST /v1/analyze/stream"), transport.paths())
+        assertEquals("c.1.4.m", solved.single().challenge)
+        val post = transport.sent.last()
+        assertEquals(sent.toString(), post.body) // the request exactly as sent, for "Wrong result?"
+        val body = JSONObject(post.body!!)
+        assertEquals(setOf("url", "page_facts", "proof_of_work"), body.keys().asSequence().toSet())
+        val proof = body.getJSONObject("proof_of_work")
+        assertEquals("c.1.4.m", proof.getString("challenge"))
+        assertTrue(ProofOfWork.solves("c.1.4.m", proof.getString("solution"), 4))
+        // Nothing names the user or the phone.
+        for (request in transport.sent) {
+            assertFalse(request.headers.keys.any { it.equals("Authorization", ignoreCase = true) })
+            assertFalse("X-Unfret-Donate" in request.headers)
+        }
+        assertFalse(page.has("proof_of_work")) // the page itself is left as it was
     }
 
     @Test
-    fun `only a deep check that can't be paid for becomes a quick one`() {
-        assertTrue(QuickCheck.fallsBackToQuick(Problem.NO_CHECKS))
-        assertTrue(QuickCheck.fallsBackToQuick(Problem.FREE_PAUSED))
-        for (other in listOf(Problem.TOO_MANY, Problem.BAD_KEY, Problem.FAILED, Problem.OFFLINE, Problem.SERVICE_OFF)) {
-            assertFalse(other.name, QuickCheck.fallsBackToQuick(other))
+    fun `a refused challenge is fetched and solved once more`() {
+        val transport = RoutedTransport(
+            mapOf(
+                "GET /v1/analyze/challenge" to listOf(200 to challenge),
+                "POST /v1/analyze/stream" to listOf(
+                    400 to """{"detail":"Expired","error_code":"BAD_CHALLENGE"}""",
+                    200 to result,
+                ),
+            ),
+        )
+        val api = UnfretApi(UnfretApi.PRODUCTION, transport, donateOff = true)
+        api.deepCheck(page, solve = { "7" })
+        assertEquals(4, transport.sent.size)
+        assertTrue(transport.sent.all { it.headers["X-Unfret-Donate"] == "off" })
+
+        // Twice refused: given up, with the server's code.
+        val stubborn = RoutedTransport(
+            mapOf(
+                "GET /v1/analyze/challenge" to listOf(200 to challenge),
+                "POST /v1/analyze/stream" to listOf(428 to """{"detail":"x","error_code":"PROOF_OF_WORK_REQUIRED"}"""),
+            ),
+        )
+        val error = assertThrows(ApiError::class.java) {
+            UnfretApi(UnfretApi.PRODUCTION, stubborn, donateOff = false).deepCheck(page, solve = { "7" })
+        }
+        assertEquals("PROOF_OF_WORK_REQUIRED", error.code)
+        assertEquals(4, stubborn.sent.size)
+    }
+
+    @Test
+    fun `a paused challenge is never solved`() {
+        val transport = RoutedTransport(
+            mapOf(
+                "GET /v1/analyze/challenge" to listOf(
+                    200 to """{"challenge":"c","bits":20,"expires_at":1.0,"paused":true,
+                    "pause":{"reason":"spend_ceiling","retry_after_s":86400,"quick_checks":true,"message_key":"free_checks_paused"}}""",
+                ),
+            ),
+        )
+        val error = assertThrows(ApiError::class.java) {
+            UnfretApi(UnfretApi.PRODUCTION, transport, donateOff = true).deepCheck(page, solve = { error("solved") })
+        }
+        assertEquals(Problem.PAUSED, Problem.of(error))
+        assertEquals(86400, error.retryAfterS)
+        assertEquals(listOf("GET /v1/analyze/challenge"), transport.paths())
+    }
+
+    @Test
+    fun `too many deep checks from this network or none available - its own problem`() {
+        for ((status, code, problem) in listOf(
+            Triple(429, "TOO_MANY_REQUESTS", Problem.TOO_MANY),
+            Triple(503, "SERVICE_UNAVAILABLE", Problem.SERVICE_OFF),
+            Triple(429, "FREE_CHECKS_PAUSED", Problem.PAUSED),
+        )) {
+            val transport = RoutedTransport(
+                mapOf(
+                    "GET /v1/analyze/challenge" to listOf(200 to challenge),
+                    "POST /v1/analyze/stream" to listOf(status to """{"detail":"x","error_code":"$code","metadata":{"retry_after_s":120}}"""),
+                ),
+            )
+            val error = assertThrows(ApiError::class.java) {
+                UnfretApi(UnfretApi.PRODUCTION, transport, donateOff = false).deepCheck(page, solve = { "1" })
+            }
+            assertEquals(problem, Problem.of(error))
+            assertEquals(2, transport.sent.size) // not retried
         }
     }
 
     @Test
-    fun `the quick checks' per-minute limit is its own problem`() {
-        assertEquals(Problem.TOO_MANY, Problem.of(ApiError(429, "TOO_MANY_REQUESTS", "Too many quick checks in a minute; wait a moment.")))
-        assertEquals(Problem.FREE_PAUSED, Problem.of(ApiError(429, "FREE_CHECKS_PAUSED", "x")))
-    }
-
-    private class OneAnswer(private val body: String) : Transport {
-        val sent = mutableListOf<HttpRequest>()
-
-        override fun send(request: HttpRequest): HttpResponse {
-            sent += request
-            return HttpResponse(200, BufferedReader(StringReader(body)))
-        }
-    }
-
-    @Test
-    fun `a quick check without a pass goes without Authorization`() {
-        val transport = OneAnswer("event: result\ndata: {\"score\": 80, \"explanation\": \"Fine.\", \"charged\": false, \"tier\": \"quick\"}\n\n")
+    fun `a quick check goes without a proof of work`() {
+        val transport = RoutedTransport(mapOf("POST /v1/analyze/stream" to listOf(200 to result)))
         val extraction = JSONObject().put("facts", JSONObject().put("url", "https://shop.test/p"))
-
-        val result = UnfretApi(UnfretApi.PRODUCTION, null, transport).analyze(AnalyzeRequest.fromExtraction(extraction, quick = true))
-
-        assertEquals("quick", result.tier)
-        val request = transport.sent.single()
-        assertFalse(request.headers.containsKey("Authorization"))
-        assertEquals("quick", JSONObject(request.body!!).getString("tier"))
-        // A deep check needs a pass: it isn't sent without one.
+        UnfretApi(UnfretApi.PRODUCTION, transport, donateOff = false).analyze(AnalyzeRequest.fromExtraction(extraction, quick = true))
+        val body = JSONObject(transport.sent.single().body!!)
+        assertEquals("quick", body.getString("tier"))
+        assertFalse(body.has("proof_of_work"))
         assertThrows(IllegalArgumentException::class.java) {
-            UnfretApi(UnfretApi.PRODUCTION, null, transport).analyze(AnalyzeRequest.fromExtraction(extraction))
+            UnfretApi(UnfretApi.PRODUCTION, transport, donateOff = false).deepCheck(body, solve = { "1" })
         }
-        assertEquals(1, transport.sent.size)
     }
 }
