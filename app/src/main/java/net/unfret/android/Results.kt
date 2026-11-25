@@ -117,7 +117,8 @@ data class Risk(
     val because: List<Because>,
     val explanation: String,
 ) {
-    data class Because(val type: String, val level: Int?, val title: String)
+    /** [source]: where the evidence comes from, in words ("Domain registry (RDAP)"); empty from an older server. */
+    data class Because(val type: String, val level: Int?, val title: String, val source: String = "")
 
     companion object {
         const val MAX = 4
@@ -137,7 +138,12 @@ data class Risk(
                 if (title.isEmpty()) {
                     null
                 } else {
-                    Because(b.optString("type"), if (b.has("level") && !b.isNull("level")) b.optInt("level") else null, title)
+                    Because(
+                        b.optString("type"),
+                        if (b.has("level") && !b.isNull("level")) b.optInt("level") else null,
+                        title,
+                        if (b.isNull("source")) "" else b.optString("source"),
+                    )
                 }
             }
             return Risk(
@@ -204,7 +210,7 @@ data class AnalysisResult(
             val seen = mutableSetOf<String>()
             return risk.because.filter { it.type.isEmpty() || seen.add(it.type) }.map { b ->
                 val reason = reasons[b.type]
-                RiskFinding(b.type, b.title, b.level, reason?.detail.orEmpty(), reason?.source.orEmpty())
+                RiskFinding(b.type, b.title, b.level, reason?.detail.orEmpty(), b.source.ifEmpty { reason?.source.orEmpty() })
             }
         }
 

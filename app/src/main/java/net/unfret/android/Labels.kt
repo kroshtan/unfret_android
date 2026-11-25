@@ -7,7 +7,7 @@ import java.util.Base64
 
 /**
  * "Wrong result?", the one report flow (`POST /v1/labels`, contract v1): the level the shopper thinks is right, the
- * findings shown that are wrong, findings that are missing, and an optional explanation, sent with the result's
+ * findings shown that are wrong, findings that are missing, and an optional comment, sent with the result's
  * `label_token` and the analysed request as sent, without its `proof_of_work` (the token's hash doesn't cover it, and
  * the report has no use for it). The report keeps the page it is about (scrubbed), never who
  * sent it. At least one of [level], [wrong] and [missing] is needed.
@@ -18,6 +18,9 @@ data class LabelReport(
     val level: Int? = null,
     val wrong: List<String> = emptyList(),
     val missing: List<String> = emptyList(),
+    /** The shopper's own words (`comment`, at most [MAX_COMMENT]); the server removes personal details from it. */
+    val comment: String = "",
+    /** The result's own explanation, as returned (`explanation`). */
     val explanation: String = "",
     val verdict: JSONObject? = null,
     /** Only when the user turned the contributor key on ([ContributorKey]). */
@@ -33,14 +36,15 @@ data class LabelReport(
         if (level != null) body.put("level", level)
         if (wrong.isNotEmpty()) body.put("wrong", JSONArray(wrong))
         if (missing.isNotEmpty()) body.put("missing", JSONArray(missing))
-        explanation.trim().take(MAX_EXPLANATION).takeIf { it.isNotEmpty() }?.let { body.put("explanation", it) }
+        comment.trim().take(MAX_COMMENT).takeIf { it.isNotEmpty() }?.let { body.put("comment", it) }
+        explanation.takeIf { it.isNotEmpty() }?.let { body.put("explanation", it) }
         if (verdict != null) body.put("verdict", verdict)
         if (contributorKey != null) body.put("contributor_key", contributorKey)
         return body
     }
 
     companion object {
-        const val MAX_EXPLANATION = 1000
+        const val MAX_COMMENT = 500
     }
 }
 
@@ -89,8 +93,9 @@ object ContributorKey {
 }
 
 /**
- * Findings a shopper may say are missing (`missing`): reason types of the server's copy catalogue, in its words, worst
- * first; the same list as the extension's (`src/shared/report.ts`). Those the result already showed are left out.
+ * Findings a shopper may say are missing (`missing`), offline only: the server's catalogue
+ * (`GET /v1/catalogue/findings`, [UnfretApi.findingsCatalogue]) is used whenever it could be loaded. The same list as
+ * the extension's (`src/shared/report.ts`). Those the result already showed are left out.
  */
 val MISSING_CHOICES: List<Pair<String, String>> = listOf(
     "new_domain" to "Brand-new web shop",
@@ -127,3 +132,16 @@ fun labelRefusal(error: Throwable): Int? = if (error !is ApiError) {
         else -> null
     }
 }
+
+/**
+ * The missing-finding choices for a result: the catalogue's types with a level (a payment modifier has none), or the
+ * offline list ([MISSING_CHOICES]) without the catalogue, each once, minus what the result showed.
+ */
+fun missingChoices(catalogue: List<CatalogueFinding>?, shown: List<Pair<String, String>>): List<Pair<String, String>> {
+    val choices = catalogue?.filter { it.level != null }?.map { it.type to it.title }?.takeIf { it.isNotEmpty() } ?: MISSING_CHOICES
+    val showed = shown.map { it.first }.toSet()
+    return choices.filter { it.first !in showed && it.first != "overall" }.distinctBy { it.first }
+}
+
+/** One entry of `GET /v1/catalogue/findings`: a finding type, its title, and its default level (null: a modifier). */
+data class CatalogueFinding(val type: String, val title: String, val level: Int?)
