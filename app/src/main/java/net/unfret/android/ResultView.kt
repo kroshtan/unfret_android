@@ -13,8 +13,9 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 
 /**
- * The result card, native, the same as on the website and in the extension: the band with its symbol and label, the
- * headline, the same product sold elsewhere (first, with both photos), the findings with their sources, one next
+ * The result card, native, the same as on the website and in the extension: the risk level (0-4) with its words and
+ * its one-line explanation, the findings behind it with their sources (worst first), or for an older server the band
+ * with its symbol and label and the headline; the same product sold elsewhere (first, with both photos), the findings with their sources, one next
  * step, what was checked, and the "Wrong result?" and objection links.
  */
 class ResultView(private val root: View, private val inflater: LayoutInflater) {
@@ -38,6 +39,7 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
     private val card: MaterialCardView = root.findViewById(R.id.band_card)
     private val symbol: TextView = root.findViewById(R.id.band_symbol)
     private val label: TextView = root.findViewById(R.id.band_label)
+    private val scale: TextView = root.findViewById(R.id.risk_scale)
     private val headline: TextView = root.findViewById(R.id.headline)
     private val noCheck: TextView = root.findViewById(R.id.no_check)
     private val sections: LinearLayout = root.findViewById(R.id.sections)
@@ -53,18 +55,30 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
     /** [note]: why this is a quick check when a deep one was asked for (paused, too many, unavailable), with its link. */
     fun show(result: AnalysisResult, note: CharSequence? = null) {
         val band = result.band
-        val (strong, soft) = colours(band)
+        val risk = result.risk
+        val (strong, soft) = if (risk != null) levelColours(risk.level) else colours(band)
         card.setCardBackgroundColor(ContextCompat.getColor(context, soft))
         symbol.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(context, strong))
-        symbol.text = band?.symbol ?: "?"
+        symbol.text = risk?.level?.toString() ?: band?.symbol ?: "?"
         val verdict = result.verdict
         label.text = when {
             !result.assessed -> context.getString(R.string.not_assessed)
+            risk != null -> risk.label.ifEmpty { context.getString(levelLabel(risk.level)) }
             verdict != null && verdict.label.isNotEmpty() -> verdict.label
             band != null -> context.getString(bandLabel(band))
             else -> context.getString(R.string.result_title)
         }
-        headline.text = verdict?.headline?.takeIf { it.isNotEmpty() } ?: result.explanation
+        // "Risk level 2 of 4" above the words, so the number in the circle reads on its own.
+        scale.visibility = if (risk != null) View.VISIBLE else View.GONE
+        if (risk != null) {
+            scale.text = context.getString(R.string.risk_scale, risk.level, Risk.MAX)
+            label.contentDescription = "${scale.text}: ${label.text}"
+        } else {
+            label.contentDescription = null
+        }
+        headline.text = risk?.explanation?.takeIf { it.isNotEmpty() }
+            ?: verdict?.headline?.takeIf { it.isNotEmpty() }
+            ?: result.explanation
         headline.visibility = if (headline.text.isNullOrEmpty()) View.GONE else View.VISIBLE
         // Right under the headline: a quick check that was asked for as a deep one says why ([note]); otherwise what
         // the check cost, as a sentence ("Deep checks are free.").
@@ -94,7 +108,10 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
             clean.setPadding(0, dp(16), 0, 0)
             sections.addView(clean)
         }
-        val reasons = if (result.needsOverallReason) {
+        val findings = result.riskFindings
+        val reasons = if (findings.isNotEmpty()) {
+            emptyList()
+        } else if (result.needsOverallReason) {
             listOf(
                 Reason(
                     context.getString(R.string.reason_overall_title),
@@ -108,8 +125,10 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         val positives = verdict?.positives.orEmpty()
         if (result.positivesFirst) {
             addPositives(positives)
+            addRiskFindings(findings)
             addReasons(reasons)
         } else {
+            addRiskFindings(findings)
             addReasons(reasons)
             addPositives(positives)
         }
@@ -216,6 +235,19 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         }
     }
 
+    /** The findings behind the risk level, worst first, each marked in its level's colour. */
+    private fun addRiskFindings(findings: List<RiskFinding>) {
+        if (findings.isEmpty()) return
+        addHeading(context.getString(R.string.risk_because_title))
+        for (finding in findings) {
+            val level = finding.level
+            val colour = if (level == null) R.color.muted else levelColours(level).first
+            val said = listOf(finding.title, finding.detail).filter { it.isNotEmpty() }.joinToString(". ")
+            val description = if (level == null) said else context.getString(R.string.risk_finding_described, level, said)
+            addItem(finding.title, finding.detail, finding.source, colour, description)
+        }
+    }
+
     private fun addPositives(positives: List<Positive>) {
         if (positives.isEmpty()) return
         addHeading(context.getString(R.string.positives_title))
@@ -287,6 +319,23 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         Band.CONCERNS -> R.string.band_concerns
         Band.CAREFUL -> R.string.band_careful
         Band.JUNK_OR_SCAM -> R.string.band_junk_or_scam
+    }
+
+    /** The level in words (the server's), for a risk level without its label. */
+    private fun levelLabel(level: Int): Int = when (level) {
+        0 -> R.string.level_none
+        1 -> R.string.level_manipulation
+        2 -> R.string.level_overpaying
+        3 -> R.string.level_doesnt_work
+        else -> R.string.level_wont_arrive
+    }
+
+    /** A level's strong and soft colours: higher is worse. */
+    private fun levelColours(level: Int): Pair<Int, Int> = when (level) {
+        0 -> R.color.good to R.color.good_soft
+        1 -> R.color.note to R.color.note_soft
+        2 -> R.color.care to R.color.care_soft
+        else -> R.color.stop to R.color.stop_soft
     }
 
     /** The band's strong and soft colours (the website's good / note / care / stop). */

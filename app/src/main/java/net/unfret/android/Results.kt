@@ -76,7 +76,8 @@ data class DeepCheck(
 }
 
 data class Verdict(
-    val band: Band,
+    /** Deprecated by the server (the risk level replaces it); null when absent or unknown. */
+    val band: Band?,
     val label: String,
     val headline: String,
     val reasons: List<Reason>,
@@ -102,6 +103,60 @@ data class Verdict(
             null
         }
 }
+
+/**
+ * The one overall risk level (`verdict.risk`, contract v1): higher is worse. 0 no concerns, 1 pressure and tricks, 2
+ * may cost more than it's worth, 3 may not work as described, 4 may not arrive or may not be safe. [because] lists
+ * every finding behind the level, worst first; [explanation] is the one-line why ("Level 2 because: …", with a raise
+ * or lowering by payment protection).
+ */
+data class Risk(
+    val level: Int,
+    val key: String,
+    val label: String,
+    val because: List<Because>,
+    val explanation: String,
+) {
+    data class Because(val type: String, val level: Int?, val title: String)
+
+    companion object {
+        const val MAX = 4
+
+        /** The level each key stands for: "read the key when in doubt" (the numbering was turned round once). */
+        val KEYS = listOf("none", "manipulation", "overpaying", "doesnt_work", "wont_arrive")
+
+        fun parse(json: JSONObject?): Risk? {
+            if (json == null) return null
+            val key = if (json.isNull("key")) "" else json.optString("key")
+            val level = KEYS.indexOf(key).takeIf { it >= 0 }
+                ?: json.optInt("level", -1).takeIf { it in 0..MAX }
+                ?: return null
+            val because = (0 until (json.optJSONArray("because")?.length() ?: 0)).mapNotNull { i ->
+                val b = json.getJSONArray("because").optJSONObject(i) ?: return@mapNotNull null
+                val title = if (b.isNull("title")) "" else b.optString("title")
+                if (title.isEmpty()) {
+                    null
+                } else {
+                    Because(b.optString("type"), if (b.has("level") && !b.isNull("level")) b.optInt("level") else null, title)
+                }
+            }
+            return Risk(
+                level = level,
+                key = key,
+                label = if (json.isNull("label")) "" else json.optString("label"),
+                // Worst first, whatever order they came in; a finding with no level of its own last.
+                because = because.withIndex().sortedWith(compareBy({ -(it.value.level ?: -1) }, { it.index })).map { it.value },
+                explanation = if (json.isNull("explanation")) "" else json.optString("explanation"),
+            )
+        }
+    }
+}
+
+/**
+ * A finding behind the risk level, as shown: its title, and the detail and source of the reason of the same type when
+ * the result has one (`verdict.reasons`).
+ */
+data class RiskFinding(val title: String, val level: Int?, val detail: String, val source: String)
 
 /** What a check cost, when the server didn't say it in words (an older server): the same sentences, without a count. */
 enum class Charge { QUICK, NOT_ASSESSED, REPEAT, FREE }
@@ -135,7 +190,24 @@ data class AnalysisResult(
     val freeCheck: Boolean? = null,
     /** What the check cost, as the server says it ("Deep checks are free."). */
     val chargeNote: String? = null,
+    /** The overall risk level; null from an older server (the band is shown then). */
+    val risk: Risk? = null,
 ) {
+    /**
+     * The findings behind the risk level, worst first, each once, with the reason's detail and source where the result
+     * has the reason. Empty without a risk level.
+     */
+    val riskFindings: List<RiskFinding>
+        get() {
+            val risk = risk ?: return emptyList()
+            val reasons = verdict?.reasons.orEmpty().filter { it.type.isNotEmpty() }.associateBy { it.type }
+            val seen = mutableSetOf<String>()
+            return risk.because.filter { it.type.isEmpty() || seen.add(it.type) }.map { b ->
+                val reason = reasons[b.type]
+                RiskFinding(b.title, b.level, reason?.detail.orEmpty(), reason?.source.orEmpty())
+            }
+        }
+
     /** What the check cost, for a result without [chargeNote]; null when nothing can be said. */
     val charge: Charge?
         get() = when {
@@ -155,7 +227,7 @@ data class AnalysisResult(
     val reasonsToShow: List<Reason>
         get() = verdict?.let { if (it.band == Band.RELIABLE) it.reasons.take(1) else it.reasons }.orEmpty()
 
-    val positivesFirst: Boolean get() = verdict?.band == Band.RELIABLE
+    val positivesFirst: Boolean get() = risk?.let { it.level == 0 } ?: (verdict?.band == Band.RELIABLE)
 
     /**
      * Whether to show the catalogue's "overall" reason ("Nothing clear-cut"): a verdict below "Looks fine" always names
@@ -168,7 +240,10 @@ data class AnalysisResult(
 
     /** On a clean result (looks fine, nothing to note), how many checks found nothing worrying; null otherwise. */
     val cleanChecks: Int?
-        get() = verdict?.takeIf { it.band == Band.RELIABLE && it.reasons.isEmpty() }?.checksRun?.takeIf { it > 0 }
+        get() {
+            val clean = risk?.let { it.level == 0 && it.because.isEmpty() } ?: (verdict?.band == Band.RELIABLE && verdict.reasons.isEmpty())
+            return verdict?.takeIf { clean }?.checksRun?.takeIf { it > 0 }
+        }
 
     companion object {
         fun parse(json: JSONObject): AnalysisResult {
@@ -183,13 +258,13 @@ data class AnalysisResult(
                 tier = text(json, "tier"),
                 freeCheck = if (json.has("free_check") && !json.isNull("free_check")) json.optBoolean("free_check") else null,
                 chargeNote = text(json, "charge_note").takeIf { it.isNotEmpty() },
+                risk = if (score >= 0) Risk.parse(json.optJSONObject("verdict")?.optJSONObject("risk")) else null,
             )
         }
 
-        private fun parseVerdict(json: JSONObject): Verdict? {
-            val band = Band.fromWire(json.optString("band")) ?: return null
+        private fun parseVerdict(json: JSONObject): Verdict {
             return Verdict(
-                band = band,
+                band = Band.fromWire(json.optString("band")),
                 label = json.optString("label"),
                 headline = json.optString("headline"),
                 reasons = objects(json.optJSONArray("reasons")).mapNotNull { r ->

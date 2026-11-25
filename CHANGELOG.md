@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **The risk level.** The result card leads with the one overall risk level (`verdict.risk`, 0-4, higher is worse):
+  "Risk level 2 of 4" with the level's words ("May cost more than it's worth"), its number in the circle and the
+  level's colour, then the one-line explanation, then "Why this level": every finding behind it, worst first, each
+  with the reason's detail and source when the result has them. The key decides the level when key and number
+  disagree. `verdict.band` is no longer needed: a result without it (or with a band the app doesn't know) keeps its
+  reasons, good signs and checklist; an older server's result without a level shows the band as before.
+
 - **Every check is free, with no pass.** Quick checks as before; a deep check now solves a small proof of work on the
   phone (`GET /v1/analyze/challenge`, spread over the phone's cores, off the main thread) and sends it with the check,
   with no `Authorization` and nothing about the user or the phone. A refused or expired puzzle is fetched and solved
