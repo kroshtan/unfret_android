@@ -3,7 +3,12 @@ package net.unfret.android
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
@@ -11,8 +16,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 
 /**
- * Open [url] in the user's own browser (checkout, privacy policy): never inside the app. The Google Play build opens
- * no page that sells checks ([Storefront.mayOpen]).
+ * Open [url] in the user's own browser (privacy policy, objections): never inside the app. The Google Play build opens
+ * only what [Storefront.mayOpen] allows.
  */
 fun Activity.openInBrowser(url: String) {
     if (!Storefront.current.mayOpen(url)) return
@@ -37,15 +42,46 @@ fun padForSystemBars(root: View) {
 /** The plain-words message for a problem. */
 fun Problem.message(): Int = when (this) {
     Problem.SERVICE_OFF -> R.string.problem_service_off
-    Problem.BAD_KEY -> R.string.problem_bad_key
-    Problem.NO_CHECKS -> R.string.problem_no_checks
-    Problem.FREE_PAUSED -> R.string.problem_free_paused
+    Problem.PAUSED -> R.string.paused_note
     Problem.TOO_MANY -> R.string.problem_too_many
     Problem.FAILED -> R.string.problem_failed
     Problem.OFFLINE -> R.string.problem_offline
 }
 
-/** Where "Get checks" goes: a new key with checks, or more checks onto the key already in use. */
-fun checkoutUrl(base: String, hasKey: Boolean): String = if (hasKey) "$base/checkout?mode=topup" else "$base/checkout"
+/**
+ * The words for free deep checks being paused, with this build's link ([Storefront]): the Play build's exact sentence
+ * with "unfret.net" linking to the home page; the direct download's, followed by "Support Unfret" linking to
+ * `/donate`. [prefix] comes first (what happened instead). Show it in a TextView set up by [linkable].
+ */
+fun Activity.pauseMessage(base: String, prefix: String? = null): CharSequence {
+    val storefront = Storefront.current
+    val text = SpannableStringBuilder()
+    if (prefix != null) text.append(prefix).append(' ')
+    val start = text.length
+    text.append(getString(R.string.paused_note))
+    if (storefront.linksDonations) {
+        text.append(' ')
+        link(text, getString(R.string.support_unfret), storefront.donateUrl(base))
+    } else {
+        val at = text.indexOf(PLAY_LINK_TEXT, start)
+        if (at >= 0) text.setSpan(linkSpan(storefront.homeUrl(base)), at, at + PLAY_LINK_TEXT.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+    return text
+}
 
-fun codeUrl(base: String): String = "$base/checkout?mode=code"
+private const val PLAY_LINK_TEXT = "unfret.net"
+
+private fun Activity.link(text: SpannableStringBuilder, words: String, url: String) {
+    val start = text.length
+    text.append(words)
+    text.setSpan(linkSpan(url), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+}
+
+private fun Activity.linkSpan(url: String) = object : ClickableSpan() {
+    override fun onClick(widget: View) = openInBrowser(url)
+}
+
+/** Lets [view]'s links ([pauseMessage]) be tapped. */
+fun linkable(view: TextView) {
+    view.movementMethod = LinkMovementMethod.getInstance()
+}

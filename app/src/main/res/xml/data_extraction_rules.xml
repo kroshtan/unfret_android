@@ -1,17 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Android 12 (API 31) and later: what goes into the user's own Google backup and a device-to-device transfer. Only
-  shared_prefs/free_checks.xml, one yes/no that this phone already received its free checks (BackedUpFlag), so a
-  reinstall doesn't get them twice. With an <include>, nothing else is backed up: not the pass and its backup code
-  (shared_prefs/unfret.xml, sealed by a Keystore key that stays on this phone anyway), not the intro's yes, not the
-  WebView's data, nothing in files, databases or the cache. backup_rules.xml says the same for Android 11 and older;
-  BackupRulesTest keeps the two in step.
+  Android 12 (API 31) and later: nothing goes into a Google backup or a device-to-device transfer (allowBackup off
+  covers the backup; a transfer needs these rules). Not the intro's yes, not the WebView's data, nothing in files,
+  databases, shared preferences or the cache. backup_rules.xml says the same for Android 11 and older; BackupRulesTest
+  keeps the two in step.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="sharedpref" path="free_checks.xml" />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
-        <include domain="sharedpref" path="free_checks.xml" />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </device-transfer>
 </data-extraction-rules>

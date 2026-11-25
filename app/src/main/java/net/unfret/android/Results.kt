@@ -60,17 +60,20 @@ data class SameProduct(
 )
 
 /**
- * A quick result's suggestion of a deep check of the same page, in the server's words: what it would add here, what
- * it costs this pass, and one button ([runDeep]: run it now; otherwise get checks first).
+ * A quick result's suggestion of a deep check of the same page, in the server's words: what it would add here, a line
+ * about it ([cost]: "Deep checks are free.", or that they are paused), and at most one button ([action]).
  */
 data class DeepCheck(
     val text: String,
     val cost: String,
-    val runDeep: Boolean,
+    val action: Action,
     val actionLabel: String,
     /** Looks fine: shown quietly. */
     val quiet: Boolean,
-)
+) {
+    /** The button: run the deep check now, support Unfret (while free deep checks are paused), or none. */
+    enum class Action { RUN_DEEP, DONATE, NONE }
+}
 
 data class Verdict(
     val band: Band,
@@ -101,7 +104,7 @@ data class Verdict(
 }
 
 /** What a check cost, when the server didn't say it in words (an older server): the same sentences, without a count. */
-enum class Charge { QUICK, NOT_ASSESSED, REPEAT, FREE, BOUGHT }
+enum class Charge { QUICK, NOT_ASSESSED, REPEAT, FREE }
 
 /**
  * A photo URL the app may load: only the API's own thumbnail proxy (`<base>/v1/images/…`), so the phone never
@@ -128,9 +131,9 @@ data class AnalysisResult(
     val verdictJson: JSONObject? = null,
     /** "quick" for the rules-only quick check; "deep" or empty (an older server) otherwise. */
     val tier: String = "",
-    /** True when one of the pass's free checks paid for it. */
+    /** True for a free deep check (every shopper's deep check). */
     val freeCheck: Boolean? = null,
-    /** What the check cost, as the server says it ("This check used one of your free checks; 4 are left."). */
+    /** What the check cost, as the server says it ("Deep checks are free."). */
     val chargeNote: String? = null,
 ) {
     /** What the check cost, for a result without [chargeNote]; null when nothing can be said. */
@@ -138,14 +141,10 @@ data class AnalysisResult(
         get() = when {
             tier == "quick" -> Charge.QUICK
             !assessed -> Charge.NOT_ASSESSED
-            charged == false -> Charge.REPEAT
             freeCheck == true -> Charge.FREE
-            charged == true -> Charge.BOUGHT
+            charged == false -> Charge.REPEAT
             else -> null
         }
-
-    /** Whether the charge line is good news (no check used), shown right under the headline; otherwise at the end. */
-    val chargeFree: Boolean get() = charge.let { it == Charge.QUICK || it == Charge.NOT_ASSESSED || it == Charge.REPEAT }
 
     /** Whether the page could be assessed at all (score -1 means it couldn't). */
     val assessed: Boolean get() = score >= 0
@@ -257,12 +256,22 @@ data class AnalysisResult(
         private fun parseDeepCheck(json: JSONObject): DeepCheck? {
             val words = text(json, "text")
             if (!json.optBoolean("suggested") || words.isEmpty()) return null
-            val runDeep = text(json, "action") == "run_deep"
+            val action = when (text(json, "action")) {
+                "run_deep" -> DeepCheck.Action.RUN_DEEP
+                "donate" -> DeepCheck.Action.DONATE
+                else -> DeepCheck.Action.NONE
+            }
             return DeepCheck(
                 text = words,
                 cost = text(json, "cost"),
-                runDeep = runDeep,
-                actionLabel = text(json, "action_label").ifEmpty { if (runDeep) "Run a deep check" else "Get checks" },
+                action = action,
+                actionLabel = text(json, "action_label").ifEmpty {
+                    when (action) {
+                        DeepCheck.Action.RUN_DEEP -> "Run a deep check"
+                        DeepCheck.Action.DONATE -> "Support Unfret"
+                        DeepCheck.Action.NONE -> ""
+                    }
+                },
                 quiet = json.optBoolean("quiet"),
             )
         }
@@ -275,48 +284,24 @@ data class AnalysisResult(
     }
 }
 
-/** `GET /v1/credits`. */
 /**
- * `GET /v1/credits`: the checks left, and of them the free ones ([freeLeft]: spent before bought ones); [freePaused]
- * when today's free deep checks are all used (they are back tomorrow; quick checks still work).
+ * `GET /v1/pricing`'s `free`: whether free deep checks are paused for the rest of the month (the spend ceiling; quick
+ * checks still work).
  */
-data class Credits(
-    val checksRemaining: Int,
-    val inviteEligible: Boolean?,
-    val freeLeft: Int = 0,
-    val freePaused: Boolean = false,
-) {
-    /** Only a quick check can run: no checks left, or only free ones while today's are all used (the extension's). */
-    val quickOnly: Boolean get() = checksRemaining == 0 || (freePaused && freeLeft == checksRemaining)
-
+data class FreeChecks(val paused: Boolean) {
     companion object {
-        fun parse(json: JSONObject) = Credits(
-            checksRemaining = json.optInt("checks_remaining", 0).coerceAtLeast(0),
-            inviteEligible = if (json.has("invite_eligible")) json.optBoolean("invite_eligible") else null,
-            freeLeft = json.optInt("free_checks_remaining", 0).coerceAtLeast(0),
-            freePaused = json.optBoolean("free_checks_paused", false),
-        )
+        fun parse(json: JSONObject?) = FreeChecks(paused = json?.optBoolean("paused", false) ?: false)
     }
 }
 
-/** `GET /v1/keys/challenge`: the proof of work a new pass needs. */
-data class KeyChallenge(val challenge: String, val bits: Int) {
+/** `GET /v1/analyze/challenge`: the proof of work one free deep check needs, or [paused] (then it isn't solved). */
+data class DeepChallenge(val challenge: String, val bits: Int, val paused: Boolean, val pause: JSONObject? = null) {
     companion object {
-        fun parse(json: JSONObject) = KeyChallenge(json.getString("challenge"), json.getInt("bits"))
-    }
-}
-
-/** `POST /v1/keys`: a new pass, its backup code (shown this once), and how many free checks it came with. */
-class IssuedKey(val key: String, val keyId: String, val recoveryCode: String, val freeChecks: Int) {
-    /** Never the key or the code: an IssuedKey must not end up in a log by accident. */
-    override fun toString() = "IssuedKey($keyId, free=$freeChecks)"
-
-    companion object {
-        fun parse(json: JSONObject) = IssuedKey(
-            key = json.getString("key"),
-            keyId = json.getString("key_id"),
-            recoveryCode = json.getString("recovery_code"),
-            freeChecks = json.optInt("free_checks", 0).coerceAtLeast(0),
+        fun parse(json: JSONObject) = DeepChallenge(
+            challenge = json.getString("challenge"),
+            bits = json.getInt("bits"),
+            paused = json.optBoolean("paused", false),
+            pause = json.optJSONObject("pause"),
         )
     }
 }

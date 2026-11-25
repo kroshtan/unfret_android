@@ -2,22 +2,16 @@ package net.unfret.android
 
 /** What went wrong, in the terms the user is told about (the extension's wording, never the server's detail). */
 enum class Problem {
-    /** Checks are switched off on the server for now. */
+    /** Checks are switched off on the server for now (503). */
     SERVICE_OFF,
 
-    /** The server doesn't know the key (mistyped, or replaced by its recovery code). */
-    BAD_KEY,
+    /** Free deep checks are paused until next month: the month's spend ceiling (`FREE_CHECKS_PAUSED`). Quick checks work. */
+    PAUSED,
 
-    /** No checks left on the key. */
-    NO_CHECKS,
-
-    /** Only free checks left, and today's free deep checks are all used: back tomorrow (quick checks work). */
-    FREE_PAUSED,
-
-    /** Too many quick checks in a minute (429): wait a moment. Nothing was used. */
+    /** Too many checks from this network for now (429 `TOO_MANY_REQUESTS`): wait a moment. */
     TOO_MANY,
 
-    /** The check failed on the server's side; it gives the check back. */
+    /** The check failed on the server's side. */
     FAILED,
 
     /** Unfret couldn't be reached. */
@@ -27,10 +21,8 @@ enum class Problem {
     companion object {
         fun of(error: Throwable): Problem = when {
             error !is ApiError -> OFFLINE
-            error.serviceOff -> SERVICE_OFF
-            error.badKey -> BAD_KEY
-            error.needsChecks -> NO_CHECKS
-            error.freePaused -> FREE_PAUSED
+            error.code == UnfretApi.PAUSED -> PAUSED
+            error.status == 503 -> SERVICE_OFF
             error.status == 429 -> TOO_MANY
             else -> FAILED
         }

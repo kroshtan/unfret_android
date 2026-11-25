@@ -20,13 +20,12 @@ import com.google.android.material.card.MaterialCardView
 class ResultView(private val root: View, private val inflater: LayoutInflater) {
     var onBackToPage: () -> Unit = {}
     var onDone: () -> Unit = {}
-    var onReport: () -> Unit = {}
     var onObject: () -> Unit = {}
 
-    /** The button under a quick result's suggestion: true runs a deep check of the same page, false gets checks. */
-    var onDeepHint: (runDeep: Boolean) -> Unit = {}
+    /** The button under a quick result's suggestion: run a deep check of the same page, or support Unfret. */
+    var onDeepHint: (DeepCheck.Action) -> Unit = {}
 
-    /** This build's: the Google Play build shows no purchase button or price ([Storefront.deepHint]). */
+    /** This build's: the Google Play build shows no donate button ([Storefront.deepHint]). */
     private val storefront = Storefront.current
 
     /** The API in use: photos are loaded only from its own thumbnail proxy. */
@@ -42,23 +41,17 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
     private val headline: TextView = root.findViewById(R.id.headline)
     private val noCheck: TextView = root.findViewById(R.id.no_check)
     private val sections: LinearLayout = root.findViewById(R.id.sections)
-    private val wrongResult: MaterialButton = root.findViewById(R.id.wrong_result)
 
     init {
         root.findViewById<MaterialButton>(R.id.back_to_page).setOnClickListener { onBackToPage() }
         root.findViewById<MaterialButton>(R.id.done).setOnClickListener { onDone() }
         root.findViewById<MaterialButton>(R.id.object_result).setOnClickListener { onObject() }
-        wrongResult.setOnClickListener { onReport() }
         ViewCompat.setAccessibilityHeading(label, true)
+        noCheck.movementMethod = android.text.method.LinkMovementMethod.getInstance()
     }
 
-    /** Whether "Wrong result?" is offered: a result with a report token, not reported yet. */
-    fun setReportable(reportable: Boolean) {
-        wrongResult.visibility = if (reportable) View.VISIBLE else View.GONE
-    }
-
-    /** [note]: why this is a quick check when a deep one was asked for (no checks left, or today's free ones used). */
-    fun show(result: AnalysisResult, note: String? = null) {
+    /** [note]: why this is a quick check when a deep one was asked for (paused, too many, unavailable), with its link. */
+    fun show(result: AnalysisResult, note: CharSequence? = null) {
         val band = result.band
         val (strong, soft) = colours(band)
         card.setCardBackgroundColor(ContextCompat.getColor(context, soft))
@@ -73,14 +66,10 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         }
         headline.text = verdict?.headline?.takeIf { it.isNotEmpty() } ?: result.explanation
         headline.visibility = if (headline.text.isNullOrEmpty()) View.GONE else View.VISIBLE
-        // What the check cost, as a sentence: right under the headline when no check was used (good news, easy to
-        // miss under the reasons); at the end when one was. A quick check that was asked for as a deep one says why
-        // first ([note]).
-        val charge = chargeLine(result)
-        val top = listOfNotNull(note, charge?.takeIf { result.chargeFree })
-        noCheck.text = top.joinToString(" ")
-        noCheck.visibility = if (top.isEmpty()) View.GONE else View.VISIBLE
-        setReportable(result.reportToken != null && result.assessed)
+        // Right under the headline: a quick check that was asked for as a deep one says why ([note]); otherwise what
+        // the check cost, as a sentence ("Deep checks are free.").
+        noCheck.text = note ?: chargeLine(result)
+        noCheck.visibility = if (noCheck.text.isNullOrEmpty()) View.GONE else View.VISIBLE
 
         sections.removeAllViews()
         // Part of the check didn't finish, so the verdict may be milder than it should be: first, under the band card.
@@ -147,22 +136,11 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
             )
             for (item in checklist) addCheck(item)
         }
-        // The Google Play build: only a deep check that can run now, never "Get checks" or a price.
+        // The Google Play build: never a donate button.
         storefront.deepHint(result.deepHint)?.let(::addDeepHint)
-        if (charge != null && !result.chargeFree) {
-            val paid = TextView(context)
-            paid.text = charge
-            paid.setTextAppearance(R.style.TextAppearance_Unfret_Small)
-            paid.setTextColor(ContextCompat.getColor(context, R.color.muted))
-            paid.setPadding(0, dp(16), 0, 0)
-            sections.addView(paid)
-        }
     }
 
-    /**
-     * What the check cost: the server's sentence (with the checks left), or the same words without the count (also in
-     * the Play build for a sentence about buying).
-     */
+    /** What the check cost: the server's sentence, or the app's own words (also in the Play build for one about money). */
     private fun chargeLine(result: AnalysisResult): String? = storefront.serverWords(result.chargeNote) ?: result.charge?.let {
         context.getString(
             when (it) {
@@ -170,14 +148,13 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
                 Charge.NOT_ASSESSED -> R.string.charge_not_assessed
                 Charge.REPEAT -> R.string.charge_repeat
                 Charge.FREE -> R.string.charge_free
-                Charge.BOUGHT -> R.string.charge_bought
             },
         )
     }
 
     private fun countOf(plural: Int, n: Int): String = context.resources.getQuantityString(plural, n, n)
 
-    /** Once, under the quick result: what a deep check would add here, what it costs, one button. */
+    /** Once, under the quick result: what a deep check would add here, a line about it, at most one button. */
     private fun addDeepHint(hint: DeepCheck) {
         val view = inflater.inflate(R.layout.item_deep_hint, sections, false)
         val text = view.findViewById<TextView>(R.id.deep_hint_text)
@@ -187,8 +164,12 @@ class ResultView(private val root: View, private val inflater: LayoutInflater) {
         cost.text = hint.cost
         cost.visibility = if (hint.cost.isEmpty()) View.GONE else View.VISIBLE
         val button = view.findViewById<MaterialButton>(R.id.deep_hint_action)
-        button.text = hint.actionLabel
-        button.setOnClickListener { onDeepHint(hint.runDeep) }
+        if (hint.action == DeepCheck.Action.NONE || hint.actionLabel.isEmpty()) {
+            button.visibility = View.GONE
+        } else {
+            button.text = hint.actionLabel
+            button.setOnClickListener { onDeepHint(hint.action) }
+        }
         sections.addView(view)
     }
 

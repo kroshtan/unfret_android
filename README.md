@@ -57,56 +57,55 @@ see [Building](#building)) and turn on the app's dev-server switch.
   other sites it refers to (a link's site and path, never what follows a `?`). Account menus, greetings, forms and
   their fields, checkout, billing and delivery areas, and any address that isn't the business's own are removed
   first. On a private seller's ad the seller's name is never read.
-- **Sent, only to unfret.net:** the page address, those facts and that text, and your Unfret pass. No device details
-  (the app identifies itself as `Unfret-Android/<version>`, not your phone's model), no location, no contacts.
-- **Kept on the phone:** your key (encrypted with a key in the Android Keystore; for a pass the app made itself, its
-  backup code too, encrypted the same way), whether you accepted the intro, whether the first pass was set up, for a
-  moment that your pass ended (the server no longer knows it; the home screen says so once), and nothing else. The
-  pages you open are forgotten: the WebView runs in its own process, and when you close the page its cookies,
-  storage, cache and other files are deleted and that process ends.
-- **In Android's backup:** one yes or no, that this phone already received its free checks, in your own Google
-  backup (and a transfer to a new phone), so a reinstall doesn't get them twice. Nothing else, and never the pass. No
-  device identifier is used or sent.
+- **Sent, only to unfret.net:** the page address, those facts and that text. No pass, no account, no device
+  details (the app identifies itself as `Unfret-Android/<version>`, not your phone's model), no location, no contacts.
+- **Kept on the phone:** whether you accepted the intro, and nothing else. The pages you open are forgotten: the
+  WebView runs in its own process, and when you close the page its cookies, storage, cache and other files are
+  deleted and that process ends. Nothing goes into Android's backup.
 
 The full statement is [PRIVACY.md](PRIVACY.md).
 
-## Checks and your key
+## Free checks
 
-Each deep check uses one check from your Unfret pass (an API key, `ufk_…`). On the first launch, after the intro, the
-app makes its own pass, as the browser extension does on install: a proof of work (`GET /v1/keys/challenge`, solved
-on the phone), then `POST /v1/keys` with `"free": true`. It comes with 5 free deep checks, within the server's daily
-limit per network; they are used before bought checks, and once they're used up quick checks stay free. A phone that
-had its free checks before (a flag restored from its own Android backup after a reinstall) gets a pass without them
-and is told why. A pass can also be pasted, or handed over by the "Use on your phone" QR code on unfret.net
-(`https://unfret.net/pass#pass=…`, an Android App Link: the app asks before using it). **Nothing is sold in the
-app**: "Get checks" and "Have a code?" open unfret.net's checkout in your browser, where checks are bought or a code
-is redeemed onto a pass. The Google Play build (`play`) has no "Get checks" and no word of buying, as Google Play
-asks; a gift code is redeemed in the app instead ([docs/RELEASING.md](docs/RELEASING.md), "Google Play"). Testing the backup and the link by hand: [docs/TESTING-BY-HAND.md](docs/TESTING-BY-HAND.md).
+Every check is free, with no pass and no account. A **quick check** reads the page by Unfret's rules. A **deep check**
+also looks the shop up elsewhere: the phone first solves a small proof of work (`GET /v1/analyze/challenge`, about a
+million hashes, spread over the phone's cores), then sends it with the check. That and the server's limits per network
+keep free checks fair without knowing who you are; no Play Integrity or other attestation is used. Deep checks run on
+donations: when the month's budget is used up they pause until next month and the app offers a quick check.
+
+Nothing is sold in the app. The direct download (unfret.net/android) links to `unfret.net/donate` when deep checks
+are paused and has a "Support Unfret" link. The Google Play build (`play`) has no donate or support link, as Google
+Play's payments policy asks, and tells the server so (`X-Unfret-Donate: off`); see
+[docs/RELEASING.md](docs/RELEASING.md), "Google Play".
+
+Versions up to 0.1.0 kept an Unfret pass on the phone. The first launch of a later version deletes it, its backup code and the
+Keystore key that sealed them.
 
 ## How it works
 
 ```
 share sheet / pasted link ─► CheckActivity (process :check)
     WebView, visible: the page over the phone's connection (HTTPS only; JavaScript on for this page only)
-    "Check this page" / "Quick check (free)" ─► evaluateJavascript(assets/unfret-extract.js) ─► poll ─► {facts, text}
-                     ─► POST https://unfret.net/v1/analyze/stream  (Bearer ufk_…)  ─► steps ─► verdict
+    "Check this page" / "Quick check" ─► evaluateJavascript(assets/unfret-extract.js) ─► poll ─► {facts, text}
+       deep: GET /v1/analyze/challenge ─► proof of work on the phone ─┐
+                     ─► POST https://unfret.net/v1/analyze/stream  (no pass) ─► steps ─► verdict
     close ─► WebView data deleted, process ends
 ```
 
-- `app/src/main/java/net/unfret/android/`: `CheckActivity` (WebView and check), `MainActivity` (intro, link field,
-  key and checks), `ResultView` (the verdict), `UnfretApi` + `HttpUrlTransport` (the API over HttpURLConnection;
-  HTTPS, unfret.net only, no redirects), `PageReading` + `AnalyzeRequest` (the reader's answers, and the request as
-  the extension builds it), `KeyVault` + `KeystoreBox` (the key), `SharedLink` (the link in shared text),
-  `FreePass` + `ProofOfWork` + `PassSetup` (the app's own pass on first launch), `BackedUpFlag` (the one backed-up
-  yes/no), `PassLink` + `PassLinkActivity` (a pass from a link).
+- `app/src/main/java/net/unfret/android/`: `CheckActivity` (WebView and check), `MainActivity` (intro, link
+  field), `ResultView` (the verdict), `UnfretApi` + `HttpUrlTransport` (the API over HttpURLConnection; HTTPS,
+  unfret.net only, no redirects), `ProofOfWork` (a deep check's puzzle), `PageReading` + `AnalyzeRequest` (the
+  reader's answers, and the request as the extension builds it), `SharedLink` (the link in shared text),
+  `Storefront` (what each build may link to), `AppSettings` + `OldPass` (the intro's yes; an older version's pass,
+  deleted).
 - Native Android Views with Material 3 (Material Components), not Compose: the app is three screens, a WebView sits
   naturally in a View hierarchy, and it keeps the APK and the dependency list small (AppCompat and Material,
   nothing else).
 - No JavaScript interface is exposed to the page: the app asks the reader for its result with
   `evaluateJavascript` polls, so a page's scripts get nothing to call.
-- The API contract is the backend's `docs/api-contract-v1.md`; the app uses `GET /v1/credits`,
-  `POST /v1/analyze/stream`, `GET /v1/keys/challenge`, `POST /v1/keys` and `POST /v1/keys/move-free-checks`, with
-  the extension's request bodies and its plain-words error messages.
+- The API contract is the backend's `docs/api-contract-v1.md` ("Free checks for shoppers"); the app uses
+  `GET /v1/pricing`, `GET /v1/analyze/challenge` and `POST /v1/analyze/stream`, with the extension's request bodies
+  and its plain-words error messages.
 
 Debug builds have a switch for the dev deployment (dev.unfret.net, test network); release builds always use
 unfret.net.

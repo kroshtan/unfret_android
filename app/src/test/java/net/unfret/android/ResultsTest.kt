@@ -73,13 +73,6 @@ class ResultsTest {
     }
 
     @Test
-    fun `where Get checks goes`() {
-        assertEquals("https://unfret.net/checkout", checkoutUrl(UnfretApi.PRODUCTION, hasKey = false))
-        assertEquals("https://unfret.net/checkout?mode=topup", checkoutUrl(UnfretApi.PRODUCTION, hasKey = true))
-        assertEquals("https://dev.unfret.net/checkout?mode=code", codeUrl(UnfretApi.DEV))
-    }
-
-    @Test
     fun `the result card has sources, the same product, the next step and what was checked`() {
         val result = AnalysisResult.parse(
             JSONObject(
@@ -157,18 +150,23 @@ class ResultsTest {
         val offer = """{"suggested": true, "reason": "on_the_fence", "quiet": false,
             "adds": [{"key": "shop_age", "area": "who", "label": "how old this shop is"}],
             "text": "A deep check also looks at how old this shop is.",
-            "cost": "Deep checks come in packs, from ${'$'}6 for 25.", "action": "get_checks", "action_label": "Get checks"}"""
+            "cost": "Free deep checks are paused until next month.", "action": "donate", "action_label": "Support Unfret"}"""
         val hint = quick(offer).deepHint!!
         assertEquals("A deep check also looks at how old this shop is.", hint.text)
-        assertEquals("Deep checks come in packs, from \$6 for 25.", hint.cost)
-        assertFalse(hint.runDeep)
-        assertEquals("Get checks", hint.actionLabel)
+        assertEquals("Free deep checks are paused until next month.", hint.cost)
+        assertEquals(DeepCheck.Action.DONATE, hint.action)
+        assertEquals("Support Unfret", hint.actionLabel)
         assertFalse(hint.quiet)
 
-        val run = quick(offer.replace("\"get_checks\"", "\"run_deep\"").replace("\"Get checks\"", "null")
+        val run = quick(offer.replace("\"donate\"", "\"run_deep\"").replace("\"Support Unfret\"", "null")
             .replace("\"quiet\": false", "\"quiet\": true")).deepHint!!
-        assertTrue(run.runDeep && run.quiet)
+        assertTrue(run.action == DeepCheck.Action.RUN_DEEP && run.quiet)
         assertEquals("Run a deep check", run.actionLabel)
+
+        // The Play build's server sends no action while paused.
+        val none = quick(offer.replace("\"action\": \"donate\", \"action_label\": \"Support Unfret\"", "\"cost2\": 1")).deepHint!!
+        assertEquals(DeepCheck.Action.NONE, none.action)
+        assertEquals("", none.actionLabel)
 
         assertNull(quick("""{"suggested": false, "reason": "serious_concerns", "text": ""}""").deepHint)
         assertNull(quick(offer, tier = "deep").deepHint)
@@ -218,18 +216,16 @@ class ResultsTest {
     }
 
     @Test
-    fun `what a check cost, in the server's words or by kind`() {
+    fun `what a check was, in the server's words or by kind`() {
         val free = AnalysisResult.parse(
             JSONObject(
-                """{"score": 40, "explanation": "x", "charged": true, "free_check": true, "tier": "deep",
-                "charge_note": "This check used one of your free checks; 4 are left."}""",
+                """{"score": 40, "explanation": "x", "charged": false, "free_check": true, "tier": "deep",
+                "charge_note": "Deep checks are free."}""",
             ),
         )
-        assertEquals("This check used one of your free checks; 4 are left.", free.chargeNote)
+        assertEquals("Deep checks are free.", free.chargeNote)
         assertEquals(Charge.FREE, free.charge)
-        assertEquals(false, free.chargeFree) // shown at the end, not as good news
         fun kind(json: String) = AnalysisResult.parse(JSONObject(json)).charge
-        assertEquals(Charge.BOUGHT, kind("""{"score": 40, "explanation": "x", "charged": true}"""))
         assertEquals(Charge.REPEAT, kind("""{"score": 40, "explanation": "x", "charged": false}"""))
         assertEquals(Charge.NOT_ASSESSED, kind("""{"score": -1, "explanation": "x", "charged": false}"""))
         assertEquals(Charge.QUICK, kind("""{"score": 40, "explanation": "x", "charged": false, "tier": "quick"}"""))

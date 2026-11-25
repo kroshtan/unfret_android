@@ -1,21 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    The Google Play build's words (the `play` build type; Storefront): the strings of src/main/res that speak of buying
-    checks, without it. Google Play's payments policy: an app that doesn't sell through Play Billing shows no price,
-    purchase button or link, and doesn't send people elsewhere to buy. StorefrontTest checks every string this build has.
+    The Google Play build's words (the `play` build type; Storefront). Google Play's payments policy: no donate or support
+    link, and no words that send people elsewhere to pay. While free deep checks are paused the app says exactly this,
+    with "unfret.net" linking to the home page. StorefrontTest checks every string this build has.
 -->
 <resources>
-    <string name="intro_body">Unfret looks at a shop page, an ad or a service provider\'s page and tells you in plain words whether it all adds up.\n\n• Share a link to Unfret from any app, or paste it here. The page opens inside Unfret, on your phone, over your own connection, so you can accept a cookie banner or solve a captcha.\n\n• Nothing is read until you tap Check this page. Then Unfret reads the page on your phone: the product facts and the visible text. Account menus, greetings, forms, checkout and delivery areas, and any address that isn\'t the business\'s own are removed first. On a private seller\'s ad, the seller\'s name is never read.\n\n• Only those facts, that text and the page address are sent, to unfret.net, with your Unfret pass. Nothing about you or your phone.\n\n• Once you agree, Unfret makes its own pass on this phone, with free deep checks: no code, no account. Each deep check uses one; after them, quick checks stay free, and a gift code from a friend adds deep checks.\n\n• The app keeps only your pass on the phone, encrypted. Android\'s backup keeps one yes or no, in your own Google backup: that this phone already got its free checks. Never your pass. Pages you open aren\'t kept: their cookies and cache are deleted when you close them.</string>
-
-    <string name="no_key_had_free">This phone has had its free checks. Get a new pass for free quick checks, or paste the pass you have.</string>
-    <string name="pass_ended_next_had_free">Quick checks stay free; a gift code from a friend adds deep checks.</string>
-    <!-- Never shown in this build (MainActivity hides them): neutral words all the same -->
-    <string name="get_checks">More checks</string>
-    <string name="checks_on_website">A gift code goes onto the Unfret pass on this phone.</string>
-
-    <string name="setup_making_body">This takes a few seconds. Unfret makes its own Unfret pass on this phone: no code, no account.</string>
-    <string name="setup_free_body">No code, no account. Before you pay on a marketplace or a web shop, for a second-hand ad, or to a tradesperson or local service, share the page to Unfret and it tells you in plain words whether it all adds up.</string>
-    <string name="setup_free_after">After your free checks, quick checks stay free: they read the page itself, by its rules. Deep checks also look the shop up elsewhere.</string>
-    <string name="setup_had_free">This phone has had its free checks already, so your new Unfret pass starts without them. Quick checks stay free; for deep checks, use a gift code from a friend.</string>
-    <string name="setup_none_today">There were no free checks to give just now, so your new Unfret pass starts without them. Quick checks stay free; for deep checks, use a gift code from a friend.</string>
+    <string name="paused_note">Free checks run on donations. Quick checks still work; deep checks are back next month. More info at unfret.net</string>
 </resources>

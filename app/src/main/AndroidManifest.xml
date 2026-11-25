@@ -5,12 +5,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-      Backups hold one yes/no only, that this phone already received its free checks (shared_prefs/free_checks.xml):
-      res/xml/backup_rules.xml (Android 11 and older) and res/xml/data_extraction_rules.xml (12 and later). Never the
-      pass.
+      Nothing is backed up or transferred: allowBackup is off, and res/xml/backup_rules.xml (Android 11 and older) and
+      res/xml/data_extraction_rules.xml (12 and later, which also cover device transfers) exclude everything.
     -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -50,29 +49,6 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
-            </intent-filter>
-        </activity>
-
-        <!--
-          A pass handed over by a link: the "Use on your phone" QR code on unfret.net encodes
-          https://unfret.net/pass#pass=ufk_… . Only that path (not /check, not the rest of the site); verified against
-          unfret.net/.well-known/assetlinks.json. The activity only reads the link and hands the pass to the home
-          screen, which asks before using it; it leaves no window and no entry in Recents.
-        -->
-        <activity
-            android:name=".PassLinkActivity"
-            android:excludeFromRecents="true"
-            android:exported="true"
-            android:noHistory="true"
-            android:taskAffinity=""
-            android:theme="@android:style/Theme.NoDisplay">
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" />
-                <data android:host="unfret.net" />
-                <data android:path="/pass" />
             </intent-filter>
         </activity>
     </application>

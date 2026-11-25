@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Every check is free, with no pass.** Quick checks as before; a deep check now solves a small proof of work on the
+  phone (`GET /v1/analyze/challenge`, spread over the phone's cores, off the main thread) and sends it with the check,
+  with no `Authorization` and nothing about the user or the phone. A refused or expired puzzle is fetched and solved
+  once more. When a deep check can't run now (free deep checks paused for the month, too many from this network, or
+  unavailable) the app runs a quick check instead and says why above the result.
+- **No pass, packs, gift codes or balance.** The app no longer makes, keeps, pastes or takes a pass from a link (the
+  `unfret.net/pass` App Link is gone), and has no "Get checks", "Have a code?", checks left or backup code. The first
+  launch deletes a pass kept by an older version, its backup code, the Keystore key that sealed them and the
+  backed-up free-checks flag. Nothing goes into Android's backup or a device transfer any more. The intro is asked
+  again once (consent version 3).
+- **Donations, by build.** While free deep checks are paused, the Google Play build says "Free checks run on
+  donations. Quick checks still work; deep checks are back next month. More info at unfret.net", with unfret.net
+  linking to the home page; it sends `X-Unfret-Donate: off` on every request and has no donate or support link. The
+  direct download says deep checks are paused until next month and links "Support Unfret" to `unfret.net/donate`,
+  and its home screen links "Support Unfret" to `unfret.net/support`.
+- "Wrong result?" is hidden until it moves to the new report flow (free checks have no `report_token`).
+
 - **The page reader reads Amazon's mobile page's price, and reference prices and reviews on every shop**
   (unfret_extension 17fe7a7). The app's WebView gets Amazon's mobile page, whose price the reader missed: a check
   sent no price, so a discount against the "Adviesprijs" (List Price, RRP, UVP) went unseen and the result said
