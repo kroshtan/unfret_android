@@ -80,6 +80,16 @@
     <!-- A verdict below "Looks fine" always names a reason: the server's catalogue reason, when a result has none -->
     <string name="reason_overall_title">Nothing clear-cut</string>
     <string name="reason_overall_detail">Nothing on the page stands out by itself, but taken together it scored lower than most.</string>
+    <!-- The risk level: higher is worse. The server's words, for a level without its label -->
+    <string name="risk_scale">Risk level %1$d of %2$d</string>
+    <string name="level_none">No concerns found</string>
+    <string name="level_manipulation">Pressure and tricks</string>
+    <string name="level_overpaying">May cost more than it\'s worth</string>
+    <string name="level_doesnt_work">May not work as described</string>
+    <string name="level_wont_arrive">May not arrive, or may not be safe</string>
+    <string name="risk_because_title">Why this level</string>
+    <!-- For screen readers: "Level 3: Claims don't match the photos. …" -->
+    <string name="risk_finding_described">Level %1$d: %2$s</string>
     <string name="not_assessed">This page couldn\'t be checked</string>
     <string name="reasons_title">What we noticed</string>
     <string name="positives_title">What looks good</string>

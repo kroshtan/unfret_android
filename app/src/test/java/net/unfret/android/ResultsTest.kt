@@ -65,11 +65,79 @@ class ResultsTest {
     }
 
     @Test
-    fun `an unknown band is no verdict`() {
-        val result = AnalysisResult.parse(JSONObject("""{"score": 10, "explanation": "x", "verdict": {"band": "new"}}"""))
-        assertNull(result.verdict)
+    fun `an unknown or missing band keeps the verdict, banded by its score`() {
+        val result = AnalysisResult.parse(JSONObject("""{"score": 10, "explanation": "x", "verdict": {"band": "new", "headline": "h"}}"""))
+        assertNull(result.verdict!!.band)
+        assertEquals("h", result.verdict!!.headline)
         assertEquals(Band.JUNK_OR_SCAM, result.band)
-        assertEquals("✕", result.band!!.symbol)
+        val none = AnalysisResult.parse(JSONObject("""{"score": 90, "explanation": "x", "verdict": {"headline": "h", "reasons": []}}"""))
+        assertEquals(Band.RELIABLE, none.band)
+    }
+
+    private val risky = """{"score": 30, "explanation": "x", "verdict": {"band": "careful", "label": "Think twice", "headline": "Old words.",
+        "reasons": [
+          {"type": "pushy_copy", "title": "Pushy sales talk", "detail": "A countdown restarts.", "severity": "low", "source": "This page", "level": 1},
+          {"type": "missing_trust_info", "title": "Little shop information", "detail": "No address.", "severity": "high", "source": "This page", "level": 4}],
+        "positives": [{"title": "Card payment", "detail": "Chargeback possible."}],
+        "risk": {"level": 4, "key": "wont_arrive", "label": "May not arrive, or may not be safe",
+          "because": [{"type": "pushy_copy", "level": 1, "title": "Pushy sales talk"},
+                      {"type": "missing_trust_info", "level": 4, "title": "Little shop information"},
+                      {"type": "claims_mismatch", "level": 3, "title": "Claims don't match the photos"},
+                      {"type": "missing_trust_info", "level": 4, "title": "Little shop information"}],
+          "combined": null, "modifier": null, "source": "judge", "confidence": 0.8,
+          "explanation": "Level 4 because: Little shop information + Pushy sales talk."}}}"""
+
+    @Test
+    fun `the risk level with its words, its explanation and the findings behind it, worst first`() {
+        val result = AnalysisResult.parse(JSONObject(risky))
+        val risk = result.risk!!
+        assertEquals(4, risk.level)
+        assertEquals("May not arrive, or may not be safe", risk.label)
+        assertEquals("Level 4 because: Little shop information + Pushy sales talk.", risk.explanation)
+        assertEquals(
+            listOf(
+                RiskFinding("Little shop information", 4, "No address.", "This page"),
+                RiskFinding("Claims don't match the photos", 3, "", ""),
+                RiskFinding("Pushy sales talk", 1, "A countdown restarts.", "This page"),
+            ),
+            result.riskFindings,
+        )
+        assertFalse(result.positivesFirst)
+    }
+
+    @Test
+    fun `the key wins over the number, and a level outside 0-4 is none`() {
+        fun risk(json: String) = AnalysisResult.parse(JSONObject("""{"score": 50, "explanation": "x", "verdict": {"risk": $json}}""")).risk
+        assertEquals(1, risk("""{"level": 4, "key": "manipulation", "label": "", "because": [], "explanation": ""}""")!!.level)
+        assertEquals(3, risk("""{"level": 3, "key": "something_new", "label": "x", "explanation": "y"}""")!!.level)
+        assertNull(risk("""{"level": 7, "key": "new", "label": "x"}"""))
+        assertNull(risk("null"))
+        // A page that couldn't be assessed has no level.
+        assertNull(AnalysisResult.parse(JSONObject("""{"score": -1, "explanation": "x", "verdict": {"risk": {"level": 0, "key": "none"}}}""")).risk)
+    }
+
+    @Test
+    fun `level 0 shows the good signs first and counts the clean checks`() {
+        val result = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 60, "explanation": "x", "verdict": {"band": "concerns", "reasons": [], "checks_run": 9,
+                "positives": [{"title": "Known brand", "detail": ""}],
+                "risk": {"level": 0, "key": "none", "label": "No concerns found", "because": [], "explanation": "No concerns found."}}}""",
+            ),
+        )
+        assertTrue(result.positivesFirst)
+        assertEquals(9, result.cleanChecks)
+        assertEquals(emptyList<RiskFinding>(), result.riskFindings)
+    }
+
+    @Test
+    fun `the app's own words never call a shop a scam`() {
+        val strings = java.io.File("src/main/res/values/strings.xml").readText() + java.io.File("src/play/res/values/strings.xml").readText()
+        // The words, not the names (band_junk_or_scam is the server's wire name for a band).
+        val lines = strings.lines().map { it.substringAfter('>') }.filter { Regex("scam|fraud", RegexOption.IGNORE_CASE).containsMatchIn(it) }
+        // Only the notice that says it never does.
+        assertEquals(1, lines.size)
+        assertTrue(lines.single(), "never calls a shop a scam" in lines.single())
     }
 
     @Test
