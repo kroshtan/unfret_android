@@ -34,7 +34,11 @@ class LabelsTest {
         assertFalse(sent.headers.keys.any { it.equals("Authorization", ignoreCase = true) })
         val body = JSONObject(sent.body!!)
         assertEquals(setOf("label_token", "request", "level", "wrong", "explanation", "verdict"), body.keys().asSequence().toSet())
-        assertEquals(request.toString(), body.getJSONObject("request").toString())
+        // The request as sent, without its proof of work (the label token's hash doesn't cover it).
+        val sentRequest = body.getJSONObject("request")
+        assertFalse(sentRequest.has("proof_of_work"))
+        assertEquals(JSONObject(request.toString()).apply { remove("proof_of_work") }.toString(), sentRequest.toString())
+        assertTrue(request.has("proof_of_work")) // the caller's copy is left as it was
         assertEquals(2, body.getInt("level"))
         assertEquals("pushy_copy", body.getJSONArray("wrong").getString(0))
         assertEquals("The countdown is real: it's a one-day sale.", body.getString("explanation"))

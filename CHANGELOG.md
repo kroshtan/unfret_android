@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **A report's `request` leaves out the deep check's `proof_of_work`** (the label token's hash doesn't cover it). The
+  level words and the "Did we miss something?" list are now the extension's (`src/shared/report.ts`), and "Which of
+  these are wrong?" lists every reason on the card, as the extension does.
+
 - **"Wrong result?" is one flow** (`POST /v1/labels`): the risk level you think is right (0-4, the level shown is
   marked), which findings shown are wrong, findings that are missing (a short list of the server's reason types, behind
   "Did we miss something?"), and an optional explanation, sent with the result's `label_token`, the request exactly as

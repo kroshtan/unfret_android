@@ -8,7 +8,8 @@ import java.util.Base64
 /**
  * "Wrong result?", the one report flow (`POST /v1/labels`, contract v1): the level the shopper thinks is right, the
  * findings shown that are wrong, findings that are missing, and an optional explanation, sent with the result's
- * `label_token` and the analysed request exactly as sent. The report keeps the page it is about (scrubbed), never who
+ * `label_token` and the analysed request as sent, without its `proof_of_work` (the token's hash doesn't cover it, and
+ * the report has no use for it). The report keeps the page it is about (scrubbed), never who
  * sent it. At least one of [level], [wrong] and [missing] is needed.
  */
 data class LabelReport(
@@ -27,7 +28,8 @@ data class LabelReport(
     fun body(): JSONObject {
         require(complete) { "a level, a wrong finding or a missing one is needed" }
         require(level == null || level in 0..Risk.MAX) { "level $level" }
-        val body = JSONObject().put("label_token", token).put("request", request)
+        val page = JSONObject(request.toString()).apply { remove("proof_of_work") }
+        val body = JSONObject().put("label_token", token).put("request", page)
         if (level != null) body.put("level", level)
         if (wrong.isNotEmpty()) body.put("wrong", JSONArray(wrong))
         if (missing.isNotEmpty()) body.put("missing", JSONArray(missing))
@@ -87,23 +89,28 @@ object ContributorKey {
 }
 
 /**
- * Findings a shopper may say are missing (`missing`): reason types of the server's copy catalogue, in its words, the
- * ones a shopper can see for themselves. Those the result already showed are left out.
+ * Findings a shopper may say are missing (`missing`): reason types of the server's copy catalogue, in its words, worst
+ * first; the same list as the extension's (`src/shared/report.ts`). Those the result already showed are left out.
  */
 val MISSING_CHOICES: List<Pair<String, String>> = listOf(
     "new_domain" to "Brand-new web shop",
-    "missing_trust_info" to "Little shop information",
+    "no_imprint" to "No company details",
+    "far_below_market" to "Far below the usual price",
+    "seller_lookalike" to "Seller named like the brand",
+    "safety_gate_alert" to "On the EU list of dangerous products",
     "irreversible_payment_only" to "Only payments you can't get back",
-    "implausible_claims" to "Hard-to-believe claims",
     "claim_contradicted" to "A claim that doesn't add up",
+    "implausible_claims" to "Hard-to-believe claims",
     "generic_product" to "Generic product",
     "dropshipping_tools" to "Dropshipping",
+    "ships_from_far" to "Ships from far away",
     "drip_pricing" to "Price goes up at checkout",
     "no_return_policy" to "No return policy found",
-    "timer_resets" to "Fake countdown",
-    "implausible_discount" to "Unbelievable discount",
-    "duplicate_reviews" to "Copy-paste reviews",
+    "fake_urgency_app" to "Urgency tricks",
     "preticked_addon" to "Paid extra already ticked",
+    "was_never_charged" to "'Was' price not charged recently",
+    "duplicate_reviews" to "Copy-paste reviews",
+    "pushy_copy" to "Pushy sales talk",
 )
 
 /** Why `POST /v1/labels` or `/v1/contributors` refused, in the app's words, by error code; null for other failures. */
