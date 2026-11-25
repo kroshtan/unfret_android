@@ -113,7 +113,7 @@ class UnfretApi(private val base: String, private val transport: Transport, priv
         }
     }
 
-    /** `GET /v1/pricing`'s `free`: whether free deep checks are paused (the month's spend ceiling). */
+    /** `GET /v1/pricing`'s `free`: whether free deep checks are paused (the spend ceiling, until tomorrow). */
     fun freeChecks(): FreeChecks = get("/v1/pricing") { FreeChecks.parse(it.optJSONObject("free")) }
 
     /** `GET /v1/analyze/challenge`: the proof of work one free deep check needs (single use, 5 minutes). */

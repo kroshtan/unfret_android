@@ -4,7 +4,7 @@ package net.unfret.android
  * The deep check and the quick check, both free and without a pass (contract v1, "Free checks for shoppers").
  *
  * Before a check the screen offers the deep check ("Check this page") and under it, secondary, "Quick check". While
- * free deep checks are paused (the month's spend ceiling) the main button is the quick check, and it isn't offered
+ * free deep checks are paused (the spend ceiling, until tomorrow) the main button is the quick check, and it isn't offered
  * twice. A deep check the server can't run now (paused, too many from this network, unavailable) becomes a quick one,
  * and the result says why.
  */

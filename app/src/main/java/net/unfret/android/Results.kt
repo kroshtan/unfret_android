@@ -373,7 +373,7 @@ data class AnalysisResult(
 }
 
 /**
- * `GET /v1/pricing`'s `free`: whether free deep checks are paused for the rest of the month (the spend ceiling; quick
+ * `GET /v1/pricing`'s `free`: whether free deep checks are paused until tomorrow (the spend ceiling; quick
  * checks still work).
  */
 data class FreeChecks(val paused: Boolean) {

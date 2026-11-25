@@ -5,7 +5,7 @@ enum class Problem {
     /** Checks are switched off on the server for now (503). */
     SERVICE_OFF,
 
-    /** Free deep checks are paused until next month: the month's spend ceiling (`FREE_CHECKS_PAUSED`). Quick checks work. */
+    /** Free deep checks are paused until tomorrow: the spend ceiling (`FREE_CHECKS_PAUSED`). Quick checks work. */
     PAUSED,
 
     /** Too many checks from this network for now (429 `TOO_MANY_REQUESTS`): wait a moment. */

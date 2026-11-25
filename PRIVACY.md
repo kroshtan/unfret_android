@@ -40,7 +40,7 @@ its version (`Unfret-Android/0.1.0`), not your phone.
 answer with the check. The puzzle names no one. To keep free checks fair the server also counts checks per network
 for a short time, as described at <https://unfret.net/privacy>; the app sends nothing for that.
 
-When a check screen opens, the app asks `unfret.net` whether free deep checks are paused this month
+When a check screen opens, the app asks `unfret.net` whether free deep checks are paused for today
 (`GET /v1/pricing`), with nothing about you.
 
 A result that found the same product on another shop shows both photos as small thumbnails, which the app loads

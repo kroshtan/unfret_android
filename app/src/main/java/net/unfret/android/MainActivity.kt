@@ -79,6 +79,7 @@ class MainActivity : AppCompatActivity() {
         // The Google Play build has no donate or support link anywhere.
         val support = findViewById<MaterialButton>(R.id.support)
         if (storefront.linksDonations) {
+            support.text = storefront.supportLabel
             support.visibility = View.VISIBLE
             support.setOnClickListener { openInBrowser(storefront.supportUrl(settings.apiBase)) }
         }

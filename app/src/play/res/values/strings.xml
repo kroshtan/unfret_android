@@ -5,5 +5,5 @@
     with "unfret.net" linking to the home page. StorefrontTest checks every string this build has.
 -->
 <resources>
-    <string name="paused_note">Free checks run on donations. Quick checks still work; deep checks are back next month. More info at unfret.net</string>
+    <string name="paused_note">Free checks run on donations. Quick checks still work; deep checks are back tomorrow. More info at unfret.net</string>
 </resources>

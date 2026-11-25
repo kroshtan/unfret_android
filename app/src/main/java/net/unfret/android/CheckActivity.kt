@@ -75,7 +75,7 @@ class CheckActivity : AppCompatActivity() {
     /** The check being read is the free quick check. */
     private var quick = false
 
-    /** Free deep checks are paused (the month's spend ceiling), as the server said: quick checks then. */
+    /** Free deep checks are paused (the spend ceiling, until tomorrow), as the server said: quick checks then. */
     private var paused = false
 
     /** Said above a result that was meant to be a deep check and became a quick one. */
@@ -168,7 +168,7 @@ class CheckActivity : AppCompatActivity() {
 
     private fun api() = UnfretApi(base, HttpUrlTransport(), Storefront.current.donateOff)
 
-    /** Whether free deep checks are paused this month, so the quick check is offered first. */
+    /** Whether free deep checks are paused, so the quick check is offered first. */
     private fun loadFreeChecks() {
         background.execute {
             val known = try {

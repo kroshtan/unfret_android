@@ -10,7 +10,7 @@ import java.net.URI
  * `unfret.net/support`. The Google Play build (the `play` build type, the app bundle uploaded to Play) has no donate or
  * support link anywhere (Google Play's payments policy): it sends `X-Unfret-Donate: off`, so the server's words leave
  * donations out too, and while free deep checks are paused it says only "Free checks run on donations. Quick checks
- * still work; deep checks are back next month. More info at unfret.net", linking to the home page. Neither build shows
+ * still work; deep checks are back tomorrow. More info at unfret.net", linking to the home page. Neither build shows
  * a price or a purchase button.
  *
  * Decided when the app is built, not from the installer at run time: Google's review and pre-launch devices needn't
@@ -29,8 +29,11 @@ class Storefront(val play: Boolean) {
     /** What a donation pays for. */
     fun supportUrl(base: String): String = base.trimEnd('/') + "/support"
 
-    /** The home page: the Play build's "More info at unfret.net". */
-    fun homeUrl(base: String): String = base.trimEnd('/') + "/"
+    /** The home page as the Play build's "More info at unfret.net" opens it: its Play variant (no donation links). */
+    fun homeUrl(base: String): String = base.trimEnd('/') + "/?$PLAY_VARIANT"
+
+    /** "Support Unfret": the direct download's words for the donate and support links; empty in the Play build. */
+    val supportLabel: String get() = if (play) "" else BuildConfig.SUPPORT_LABEL
 
     /**
      * A quick result's deep-check suggestion, as shown. The Play build never shows its donate button, nor a line about
@@ -60,8 +63,8 @@ class Storefront(val play: Boolean) {
 
     /**
      * Whether the app may open [url] in the browser. The Play build opens only Unfret's informational pages
-     * ([INFO_PAGES]: the privacy policy, objections, about, terms) as their Play variant ([infoPage]), and the home page
-     * ("More info at unfret.net"); never `/donate`, `/support`, the checkout or anything else on unfret.net.
+     * ([INFO_PAGES]: the privacy policy, objections, about, terms) as their Play variant ([infoPage]), and the home page's
+     * Play variant ("More info at unfret.net", [homeUrl]); never `/donate`, `/support`, the checkout or anything else on unfret.net.
      */
     fun mayOpen(url: String): Boolean {
         if (!play) return true
@@ -73,7 +76,7 @@ class Storefront(val play: Boolean) {
         val unfret = uri.host?.lowercase()?.let { it == "unfret.net" || it.endsWith(".unfret.net") } ?: false
         if (!unfret) return true
         val path = uri.path.orEmpty()
-        return (path.trimEnd('/') in INFO_PAGES && uri.rawQuery == PLAY_VARIANT) || (path == "/" && uri.rawQuery == null)
+        return (path.trimEnd('/') in INFO_PAGES && uri.rawQuery == PLAY_VARIANT) || (path == "/" && uri.rawQuery == PLAY_VARIANT)
     }
 
     companion object {

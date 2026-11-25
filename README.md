@@ -74,7 +74,7 @@ Every check is free, with no pass and no account. A **quick check** reads the pa
 also looks the shop up elsewhere: the phone first solves a small proof of work (`GET /v1/analyze/challenge`, about a
 million hashes, spread over the phone's cores), then sends it with the check. That and the server's limits per network
 keep free checks fair without knowing who you are; no Play Integrity or other attestation is used. Deep checks run on
-donations: when the month's budget is used up they pause until next month and the app offers a quick check.
+donations: when the day's share of the budget is used up they pause until tomorrow and the app offers a quick check.
 
 Nothing is sold in the app. The direct download (unfret.net/android) links to `unfret.net/donate` when deep checks
 are paused and has a "Support Unfret" link. The Google Play build (`play`) has no donate or support link, as Google
