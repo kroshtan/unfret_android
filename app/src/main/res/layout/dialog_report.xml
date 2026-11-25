@@ -54,22 +54,22 @@
             android:visibility="gone" />
 
         <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/report_explanation_layout"
+            android:id="@+id/report_comment_layout"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:hint="@string/report_explanation_hint"
+            android:hint="@string/report_comment_hint"
             app:counterEnabled="true"
-            app:counterMaxLength="1000">
+            app:counterMaxLength="500">
 
             <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/report_explanation"
+                android:id="@+id/report_comment"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:importantForAutofill="no"
                 android:inputType="textMultiLine|textCapSentences"
-                android:maxLength="1000"
+                android:maxLength="500"
                 android:minLines="2" />
         </com.google.android.material.textfield.TextInputLayout>
 

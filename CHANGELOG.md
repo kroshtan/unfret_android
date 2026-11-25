@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **"Did we miss something?" reads the server's catalogue** (`GET /v1/catalogue/findings`, loaded once per check
+  screen process): its types with a level, minus what the result showed; the built-in list only when it can't be
+  loaded.
+- **"Wrong result?" takes your own words as `comment`** (optional, at most 500 characters); `explanation` is now the
+  result's own explanation, as returned (it was the typed text). The form says personal details are removed from the
+  page and from your words.
+- **Every finding behind the level shows its source** (`risk.because[].source`), not only those on the card.
+
 - **A report's `request` leaves out the deep check's `proof_of_work`** (the label token's hash doesn't cover it). The
   level words and the "Did we miss something?" list are now the extension's (`src/shared/report.ts`), and "Which of
   these are wrong?" lists every reason on the card, as the extension does.

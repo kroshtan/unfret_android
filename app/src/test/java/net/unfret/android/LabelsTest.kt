@@ -22,7 +22,8 @@ class LabelsTest {
             request = request,
             level = 2,
             wrong = listOf("pushy_copy"),
-            explanation = "  The countdown is real: it's a one-day sale.  ",
+            comment = "  The countdown is real: it's a one-day sale.  ",
+            explanation = "Level 4 because: Little shop information.",
             verdict = JSONObject("""{"risk":{"level":4}}"""),
         )
 
@@ -33,7 +34,7 @@ class LabelsTest {
         assertEquals("https://dev.unfret.net/v1/labels", sent.url)
         assertFalse(sent.headers.keys.any { it.equals("Authorization", ignoreCase = true) })
         val body = JSONObject(sent.body!!)
-        assertEquals(setOf("label_token", "request", "level", "wrong", "explanation", "verdict"), body.keys().asSequence().toSet())
+        assertEquals(setOf("label_token", "request", "level", "wrong", "comment", "explanation", "verdict"), body.keys().asSequence().toSet())
         // The request as sent, without its proof of work (the label token's hash doesn't cover it).
         val sentRequest = body.getJSONObject("request")
         assertFalse(sentRequest.has("proof_of_work"))
@@ -41,18 +42,20 @@ class LabelsTest {
         assertTrue(request.has("proof_of_work")) // the caller's copy is left as it was
         assertEquals(2, body.getInt("level"))
         assertEquals("pushy_copy", body.getJSONArray("wrong").getString(0))
-        assertEquals("The countdown is real: it's a one-day sale.", body.getString("explanation"))
+        assertEquals("The countdown is real: it's a one-day sale.", body.getString("comment"))
+        assertEquals("Level 4 because: Little shop information.", body.getString("explanation"))
     }
 
     @Test
     fun `a level, a wrong finding or a missing one is needed`() {
-        assertFalse(LabelReport("lt1", request, explanation = "only words").complete)
+        assertFalse(LabelReport("lt1", request, comment = "only words").complete)
         assertThrows(IllegalArgumentException::class.java) { LabelReport("lt1", request).body() }
         assertTrue(LabelReport("lt1", request, level = 0).complete)
         assertTrue(LabelReport("lt1", request, missing = listOf("new_domain")).complete)
         assertThrows(IllegalArgumentException::class.java) { LabelReport("lt1", request, level = 5).body() }
-        val long = LabelReport("lt1", request, level = 1, explanation = "x".repeat(5000)).body()
-        assertEquals(LabelReport.MAX_EXPLANATION, long.getString("explanation").length)
+        val long = LabelReport("lt1", request, level = 1, comment = "x".repeat(5000)).body()
+        assertEquals(LabelReport.MAX_COMMENT, long.getString("comment").length)
+        assertFalse(long.has("explanation"))
     }
 
     @Test
@@ -136,5 +139,40 @@ class LabelsTest {
         assertEquals(listOf("new_domain" to "Brand-new web shop", "pushy_copy" to "Pushy sales talk"), result.shownFindings)
         assertTrue(MISSING_CHOICES.any { it.first == "new_domain" })
         assertEquals(MISSING_CHOICES.size, MISSING_CHOICES.map { it.first }.toSet().size)
+    }
+
+    @Test
+    fun `the missing choices come from the catalogue, without modifiers or what was shown, else the offline list`() {
+        val transport = RoutedTransport(
+            mapOf(
+                "GET /v1/catalogue/findings" to listOf(
+                    200 to """{"findings":[{"type":"new_domain","title":"Brand-new web shop","level":4,"key":"wont_arrive"},
+                    {"type":"fresh_type","title":"Something new","level":2,"key":"overpaying"},
+                    {"type":"irreversible_payment_only","title":"Only payments you can't get back","level":null,"key":null},
+                    {"type":"","title":"x","level":1}]}""",
+                ),
+            ),
+        )
+        val catalogue = UnfretApi(UnfretApi.PRODUCTION, transport, donateOff = false).findingsCatalogue()
+        assertEquals(3, catalogue.size)
+        val shown = listOf("new_domain" to "Brand-new web shop")
+        assertEquals(listOf("fresh_type" to "Something new"), missingChoices(catalogue, shown))
+        val offline = missingChoices(null, shown)
+        assertFalse(offline.any { it.first == "new_domain" })
+        assertEquals(MISSING_CHOICES.size - 1, offline.size)
+        assertEquals(offline, missingChoices(emptyList(), shown))
+    }
+
+    @Test
+    fun `every finding behind the level has its own source`() {
+        val result = AnalysisResult.parse(
+            JSONObject(
+                """{"score": 30, "explanation": "x", "verdict": {"reasons": [],
+                "risk": {"level": 4, "key": "wont_arrive", "label": "x", "explanation": "y",
+                  "because": [{"type": "new_domain", "level": 4, "title": "Brand-new web shop", "source": "Domain registry (RDAP)"},
+                              {"type": "pushy_copy", "level": 1, "title": "Pushy sales talk", "source": null}]}}}""",
+            ),
+        )
+        assertEquals(listOf("Domain registry (RDAP)", ""), result.riskFindings.map { it.source })
     }
 }

@@ -99,6 +99,21 @@ class UnfretApi(private val base: String, private val transport: Transport, priv
         return post("/v1/contributors", body, Contributor::parse)
     }
 
+    /** `GET /v1/catalogue/findings`: every finding type a report can say is missing, worst first (public). */
+    fun findingsCatalogue(): List<CatalogueFinding> = get("/v1/catalogue/findings") { json ->
+        val findings = json.optJSONArray("findings")
+        (0 until (findings?.length() ?: 0)).mapNotNull { i ->
+            val f = findings!!.optJSONObject(i) ?: return@mapNotNull null
+            val type = if (f.isNull("type")) "" else f.optString("type")
+            val title = if (f.isNull("title")) "" else f.optString("title")
+            if (type.isEmpty() || title.isEmpty()) {
+                null
+            } else {
+                CatalogueFinding(type, title, if (f.has("level") && !f.isNull("level")) f.optInt("level") else null)
+            }
+        }
+    }
+
     /** `POST /v1/contributors/forget`: the server forgets [key]'s profile. */
     fun forgetContributor(key: String): Boolean =
         post("/v1/contributors/forget", JSONObject().put("contributor_key", key)) { it.optBoolean("deleted", false) }

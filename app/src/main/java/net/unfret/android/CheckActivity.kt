@@ -438,6 +438,7 @@ class CheckActivity : AppCompatActivity() {
 
     private fun showResult(result: AnalysisResult) {
         shown = result
+        if (result.reportable) loadCatalogue()
         resultView.show(result, quickNote)
         web.visibility = View.INVISIBLE
         bar.visibility = View.GONE
@@ -479,14 +480,14 @@ class CheckActivity : AppCompatActivity() {
         val shownTypes = result.shownFindings
         val wrongBoxes = checkboxes(view.findViewById(R.id.report_wrong), shownTypes)
         if (shownTypes.isEmpty()) view.findViewById<View>(R.id.report_wrong_title).visibility = View.GONE
-        val missingChoices = MISSING_CHOICES.filter { (type, _) -> shownTypes.none { it.first == type } }
+        val missingChoices = missingChoices(catalogue, shownTypes)
         val missingList = view.findViewById<LinearLayout>(R.id.report_missing)
         val missingBoxes = checkboxes(missingList, missingChoices)
         view.findViewById<MaterialButton>(R.id.report_missing_toggle).setOnClickListener { toggle ->
             missingList.visibility = View.VISIBLE
             toggle.visibility = View.GONE
         }
-        val explanation = view.findViewById<TextInputEditText>(R.id.report_explanation)
+        val comment = view.findViewById<TextInputEditText>(R.id.report_comment)
         val key = settings.contributorKey
         view.findViewById<TextView>(R.id.report_note).setText(if (key != null) R.string.report_note_key else R.string.report_note)
         val dialog = MaterialAlertDialogBuilder(this)
@@ -503,7 +504,8 @@ class CheckActivity : AppCompatActivity() {
                 level = levelIds[levels.checkedRadioButtonId],
                 wrong = wrongBoxes.filter { it.second.isChecked }.map { it.first },
                 missing = missingBoxes.filter { it.second.isChecked }.map { it.first },
-                explanation = explanation.text?.toString().orEmpty(),
+                comment = comment.text?.toString().orEmpty(),
+                explanation = result.explanation,
                 verdict = result.verdictJson,
                 contributorKey = key,
             )
@@ -517,6 +519,19 @@ class CheckActivity : AppCompatActivity() {
             }
         }
         dialog.show()
+    }
+
+    /** The findings catalogue, once per process (the server lets it be cached for a day); the offline list until then. */
+    private fun loadCatalogue() {
+        if (catalogue != null) return
+        background.execute {
+            val loaded = try {
+                api().findingsCatalogue()
+            } catch (_: Exception) {
+                null // MISSING_CHOICES stands in
+            }
+            if (!loaded.isNullOrEmpty()) catalogue = loaded
+        }
     }
 
     private fun checkboxes(into: LinearLayout, choices: List<Pair<String, String>>): List<Pair<String, CheckBox>> =
@@ -557,6 +572,10 @@ class CheckActivity : AppCompatActivity() {
     }
 
     private companion object {
+        /** `GET /v1/catalogue/findings`, once loaded. */
+        @Volatile
+        var catalogue: List<CatalogueFinding>? = null
+
         /** Check screens alive in this process (two shares in a row make two). */
         var open = 0
 
