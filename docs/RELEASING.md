@@ -159,17 +159,43 @@ APK" workflow uploads each release's app bundle itself ("Releasing on Google Pla
    can't update each other: say so on unfret.net/android when the app is listed.
 3. Store listing from the README; its images (icon, feature graphic, phone screenshots of the play build) are in
    [store/play/](../store/play/README.md). Privacy policy URL: publish [PRIVACY.md](../PRIVACY.md) on unfret.net.
-   Data safety form: data collected: none stored by the app; sent to unfret.net: "Web browsing / page content the
-   user chooses to check" for app functionality, not shared with third parties, encrypted in transit; no ads,
-   no analytics. Content rating questionnaire; target audience adults.
-4. Payments: the Play build is the `play` build type (`Storefront`): it sells nothing, shows no price and points
-   nowhere to buy, no "Get checks" and no link to the checkout (no Play Billing needed); a gift code is redeemed in
-   the app. Its words are `src/play/res`'s over `src/main/res`'s, and StorefrontTest fails on a Play string that
-   speaks of buying. Re-check Google's current payments policy before the first submission.
+   Data safety form: see "Data safety" below. Content rating questionnaire; target audience adults.
+4. Payments and donations: the Play build is the `play` build type (`Storefront`). Every check is free and nothing
+   is sold (no Play Billing needed): no price, no purchase button, no link to buying. It has **no donate or support
+   link anywhere**: it sends `X-Unfret-Donate: off` (the server's words then leave donations out), never opens
+   `/donate` or `/support`, and while free deep checks are paused says only "Free checks run on donations. Quick
+   checks still work; deep checks are back next month. More info at unfret.net", with unfret.net opening the home
+   page. Its words are `src/play/res`'s over `src/main/res`'s; StorefrontTest fails on a Play string that speaks of
+   buying, or of donating other than that line. The direct download (`release`) links to `/donate` and `/support`.
+   Re-check Google's current payments policy (donations included) before each submission.
 5. Make the upload key and set its four repo secrets (below); the next "Release APK" run attaches
    `unfret-<version>.aab`, signed with it.
 6. The service account for the Android Publisher API and its repo secret (below), so the workflow uploads the bundle
    itself. The first upload of an app has to be by hand in Play Console (the API can't create the app): 0.1.0 was.
+
+### Data safety
+
+What to answer in Play Console's Data safety form (App content), for the app as it is since free checks without a
+pass. Re-check it whenever what the app sends changes (PRIVACY.md is the source).
+
+- **Does the app collect or share user data?** Yes, collects; nothing is shared with third parties. All of it is
+  encrypted in transit (HTTPS only).
+- **Identifiers: none.** No pass, no account, no device or advertising ID, no App Set ID, no Play Integrity or other
+  attestation. Checks are tied to no one. (Unfret's server counts checks per network for a short time against abuse;
+  the app sends nothing for it. Declare it only if Google's form counts the IP address the server sees.)
+- **Web browsing / "Other user-generated content": the page the user chooses to check** (its address, product
+  facts and visible text, personal details removed on the phone). Collected, not shared, for app functionality;
+  required for a check; processed to answer and not kept with anything that names the user.
+- **"Wrong result?" reports keep the page**, with personal details removed, and what the user chose and typed
+  (level, findings, optional explanation): collected, optional (the user sends each one), for app functionality and
+  to improve the service (developer communications: no). A report never keeps who sent it.
+- **Optional contributor key** (off by default): a random key made on the phone, sent only with reports and contributor
+  calls, never with a check, with an optional leaderboard name the user picks. If Google's form asks: "User IDs",
+  optional, for app functionality, deletable in the app (turning it off asks the server to forget the profile).
+- **Not collected:** location, contacts, personal info (name, e-mail, phone), financial info, photos, files, app
+  activity, crash logs or diagnostics, device IDs. No ads, no analytics.
+- **Deletion:** nothing is stored on the phone but the intro's yes and the contributor key (if on); uninstalling
+  removes both. Users can ask hello@unfret.net to delete data (the form's deletion URL: the privacy policy).
 
 ### Releasing on Google Play
 
@@ -248,6 +274,6 @@ it must match the upload certificate Play Console shows.
 
 `BUNDLE_BUILD_TYPE` at the top of `.forgejo/workflows/release-apk.yaml` names the build type whose bundle goes to
 Play (Gradle's `bundle<Type>`, output `app/build/outputs/bundle/<type>/app-<type>.aab`); the Makefile's
-`BUNDLE_BUILD_TYPE` (`make release-bundle`) is the same and kept in step. It is `play`: the release without prices,
-"Get checks" or the checkout link (item 4), so `bundlePlay`, `app/build/outputs/bundle/play/app-play.aab`. Never the
-`release` build type's bundle: it has "Get checks".
+`BUNDLE_BUILD_TYPE` (`make release-bundle`) is the same and kept in step. It is `play`: the release with no donate or support
+link and `X-Unfret-Donate: off` (item 4), so `bundlePlay`, `app/build/outputs/bundle/play/app-play.aab`. Never the
+`release` build type's bundle: it links to donations.
