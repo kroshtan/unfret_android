@@ -227,7 +227,8 @@ data class AnalysisResult(
      */
     val shownFindings: List<Pair<String, String>>
         get() {
-            val all = riskFindings.map { it.type to it.title } + reasonsToShow.map { it.type to it.title }
+            // As the extension: the findings behind the level, then every reason on the card.
+            val all = riskFindings.map { it.type to it.title } + verdict?.reasons.orEmpty().map { it.type to it.title }
             return all.filter { it.first.isNotEmpty() && it.first != "overall" }.distinctBy { it.first }
         }
 
