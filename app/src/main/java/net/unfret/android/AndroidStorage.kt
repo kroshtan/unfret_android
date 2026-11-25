@@ -35,9 +35,16 @@ class AppSettings(context: Context) {
             prefs.edit { putInt(CONSENT, if (value) CONSENT_VERSION else 0) }
         }
 
-    /** The API to talk to: always unfret.net in release builds; debug builds may pick the dev deployment. */
+    /**
+     * The API to talk to: unfret.net in release builds, dev.unfret.net in Unfret Dev (the `dev` build type); debug
+     * builds may pick either.
+     */
     var apiBase: String
-        get() = if (BuildConfig.DEBUG) prefs.getString(SERVER, null)?.takeIf { it in UnfretApi.BASES } ?: UnfretApi.PRODUCTION else UnfretApi.PRODUCTION
+        get() = when {
+            BuildConfig.DEV -> UnfretApi.DEV
+            BuildConfig.DEBUG -> prefs.getString(SERVER, null)?.takeIf { it in UnfretApi.BASES } ?: UnfretApi.PRODUCTION
+            else -> UnfretApi.PRODUCTION
+        }
         set(value) {
             require(value in UnfretApi.BASES)
             prefs.edit { putString(SERVER, value) }

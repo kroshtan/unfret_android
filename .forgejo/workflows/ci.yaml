@@ -99,6 +99,9 @@ jobs:
   android:
     if: forgejo.event_name != 'pull_request' || !forgejo.event.pull_request.draft
     runs-on: kroshtan-public
+    outputs:
+      # Whether this run checked its commit (a superseded one checks nothing): publish-dev publishes only then.
+      checked: ${{ steps.gate.outputs.run }}
     container:
       image: ghcr.io/cirruslabs/android-sdk:36@sha256:f9b3ea9ed2b5fc9522adae82c7b4622ab7aa54207ef532c8e615a347dca08f31
     steps:
@@ -178,3 +181,53 @@ jobs:
         run: |
           ./gradlew --console=plain assembleDebug
           ls -l app/build/outputs/apk/debug/
+
+  # Unfret Dev, on every push to main: the `dev` build type (net.unfret.android.dev, "Unfret Dev", talks to
+  # dev.unfret.net only) as version <versionName>-dev.<run number>, signed with the dev key (never the release key) and
+  # published as the forge's rolling pre-release "dev", which dev.unfret.net/android shows (production's never does).
+  # docs/RELEASING.md, "Dev builds". The deploy runner, because this job holds the dev key. Repo secrets:
+  # ANDROID_DEV_KEYSTORE_B64 and ANDROID_DEV_KEYSTORE_PASSWORD (the owner keeps them in ~/kroshtan_secrets/).
+  publish-dev:
+    needs: android
+    # Only a commit whose own checks ran and passed: a superseded run checks nothing, the newer one publishes.
+    if: >-
+      forgejo.event_name == 'push' && forgejo.ref == 'refs/heads/main' && needs.android.outputs.checked == 'true'
+    runs-on: kroshtan-deploy
+    container:
+      image: ghcr.io/cirruslabs/android-sdk:36@sha256:f9b3ea9ed2b5fc9522adae82c7b4622ab7aa54207ef532c8e615a347dca08f31
+    concurrency:
+      group: publish-unfret-android-dev
+      cancel-in-progress: false
+    env:
+      UNFRET_DEV_BUILD: ${{ forgejo.run_number }}
+    steps:
+      - name: Check out
+        env:
+          SERVER: ${{ forgejo.server_url }}
+          REPO: ${{ forgejo.repository }}
+          SHA: ${{ forgejo.sha }}
+        run: |
+          set -euo pipefail
+          git init -q .
+          git remote add origin "$SERVER/$REPO.git"
+          git fetch -q --depth 1 origin "$SHA"
+          git checkout -q FETCH_HEAD
+          echo "checked out $(git rev-parse HEAD)"
+      - name: Build Unfret Dev (unsigned)
+        run: ./gradlew --console=plain assembleDev
+      - name: Sign with the dev key and verify
+        env:
+          ANDROID_DEV_KEYSTORE_B64: ${{ secrets.ANDROID_DEV_KEYSTORE_B64 }}
+          ANDROID_DEV_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_DEV_KEYSTORE_PASSWORD }}
+          DEV_COMMIT: ${{ forgejo.sha }}
+          DEV_RUN: ${{ forgejo.run_number }}
+        run: |
+          set -euo pipefail
+          [[ -n "$ANDROID_DEV_KEYSTORE_B64" && -n "$ANDROID_DEV_KEYSTORE_PASSWORD" ]] \
+            || { echo "::error::repo secrets ANDROID_DEV_KEYSTORE_B64 / ANDROID_DEV_KEYSTORE_PASSWORD are not set"; exit 1; }
+          scripts/sign-dev.sh app/build/outputs/apk/dev/app-dev-unsigned.apk dist/dev
+      - name: Publish the dev pre-release
+        env:
+          FORGE_TOKEN: ${{ forgejo.token }}
+          FORGE_API: ${{ forgejo.server_url }}/api/v1/repos/${{ forgejo.repository }}
+        run: scripts/publish-dev.sh dist/dev

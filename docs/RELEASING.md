@@ -1,6 +1,18 @@
 # Releasing
 
-Two kinds of build:
+## Three channels
+
+| Channel | Where | Package, name | Server | Signed with | Made by |
+| --- | --- | --- | --- | --- | --- |
+| **Stable** | Google Play | `net.unfret.android`, "Unfret" | unfret.net | release key (Play App Signing) | the "Release APK" workflow's app bundle, on the owner's go |
+| **Beta** | [unfret.net/android](https://unfret.net/android), below "Get it on Google Play" | `net.unfret.android`, "Unfret" | unfret.net | release key | the "Release APK" workflow (a pre-release `v0.2.0-beta.1`), on the owner's go |
+| **Dev** | [dev.unfret.net/android](https://dev.unfret.net/android) only | `net.unfret.android.dev`, "Unfret Dev" | dev.unfret.net | the **dev key** (never the release key) | CI, on every push to main ("Dev builds" below) |
+
+Stable and beta are the same app with the same key, so either installs over the other: whichever has the higher
+`versionCode` wins, and Play takes over again (updates it) as soon as Play's version is newer than an installed
+beta. Unfret Dev is a separate app next to them.
+
+The build kinds:
 
 - **Debug** (`make apk`): signed with a throwaway debug key kept in the checkout's git-ignored `.home/.android/` (in
   CI a fresh one each run), with the dev-server switch. For testing only: it can't update a release install and is
@@ -33,6 +45,11 @@ A beta is released like any other version, with two differences:
   `release.json` without the field counts as a stable release.
 
 The app's About screen adds the same sentence under the version for a beta.
+
+**The version rule: `versionCode` always goes up across Google Play and the beta channel.** They share one package and
+one key, and Android refuses to install a lower `versionCode` over a higher one, so one sequence serves both: every
+release, beta or stable, Play or APK, takes the next number, and a number is never reused (Play refuses it too). Unfret
+Dev has its own package and counts on its own (CI's run number).
 
 `versionCode` goes up with every release, betas included: a beta's APK installs over, and is updated by, the stable
 ones like any other. `0.1.0-beta.1` is the first release, so it keeps `versionCode` 1; the next build, beta or not,
@@ -140,6 +157,36 @@ git commit -m "Android 0.1.0-beta.1 on /android"   # then a pull request; deploy
 
 Until that file exists the page says the download is coming soon. The download itself is the release asset on
 git.kroshtan.com, over HTTPS.
+
+## Dev builds
+
+Every push to main that passes CI builds **Unfret Dev** (CI job `publish-dev`, on the deploy runner):
+
+1. `./gradlew assembleDev`: the `dev` build type, the release with `applicationIdSuffix ".dev"`
+   (`net.unfret.android.dev`), named "Unfret Dev" (`src/dev/res`), talking to https://dev.unfret.net only
+   (`BuildConfig.DEV`), version `<versionName>-dev.<run>` with `versionCode` = the CI run number
+   (`UNFRET_DEV_BUILD`), so each dev build installs over the one before.
+2. `scripts/sign-dev.sh`: signs it with the **dev key** and checks the package, the label, that it isn't debuggable,
+   and that the signer is the certificate pinned in `docs/dev-cert.sha256` and not the release key's. Writes
+   `unfret-dev-<version>.apk`, `SHA256SUMS` and `dev.json` (version, run, commit, size, SHA-256, certificate).
+3. `scripts/publish-dev.sh`: replaces the forge's rolling pre-release **`dev`** (its tag moves to the build's commit)
+   with those three files. dev.unfret.net/android reads
+   `https://git.kroshtan.com/kroshtan/unfret_android/releases/download/dev/dev.json` and links the APK with its version,
+   commit and SHA-256; production's /android never shows a dev build (unfret_backend, `UNFRET_ANDROID_DEV_BUILDS`).
+   The release workflow's `versionCode` check ignores it (it has no `release.json`).
+
+The dev key (RSA 4096, PKCS12, alias `dev`, certificate SHA-256 in `docs/dev-cert.sha256`) is
+`~/kroshtan_secrets/unfret-android-dev.p12`, its password `~/kroshtan_secrets/unfret-android-dev-password.txt`, and the
+repo secrets `ANDROID_DEV_KEYSTORE_B64` / `ANDROID_DEV_KEYSTORE_PASSWORD`. It signs nothing but Unfret Dev; losing it
+only means testers uninstall Unfret Dev once. By hand (in the Makefile's Android image):
+
+```bash
+UNFRET_DEV_BUILD=<n> ./gradlew assembleDev
+ANDROID_DEV_KEYSTORE_FILE=~/kroshtan_secrets/unfret-android-dev.p12 \
+  ANDROID_DEV_KEYSTORE_PASSWORD="$(cat ~/kroshtan_secrets/unfret-android-dev-password.txt)" \
+  scripts/sign-dev.sh app/build/outputs/apk/dev/app-dev-unsigned.apk dist/dev
+FORGE_TOKEN=… scripts/publish-dev.sh dist/dev
+```
 
 ## Before each release
 
