@@ -16,6 +16,9 @@ android {
         // The Google Play build sells nothing and points nowhere to buy (Storefront); every other build is the direct
         // download's, with "Get checks".
         buildConfigField("boolean", "PLAY", "false")
+        // "Support Unfret" (the donate and support links' words): the direct download only. The Play build has it
+        // empty, so the words aren't in its APK at all (no resource, no code).
+        buildConfigField("String", "SUPPORT_LABEL", "\"Support Unfret\"")
     }
 
     buildTypes {
@@ -36,6 +39,7 @@ android {
         create("play") {
             initWith(getByName("release"))
             buildConfigField("boolean", "PLAY", "true")
+            buildConfigField("String", "SUPPORT_LABEL", "\"\"")
             vcsInfo.include = false
             matchingFallbacks += listOf("release")
         }

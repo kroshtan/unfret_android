@@ -31,7 +31,9 @@
   again once (consent version 3).
 - **Donations, by build.** While free deep checks are paused, the Google Play build says "Free checks run on
   donations. Quick checks still work; deep checks are back next month. More info at unfret.net", with unfret.net
-  linking to the home page; it sends `X-Unfret-Donate: off` on every request and has no donate or support link. The
+  linking to the home page's Play variant (`https://unfret.net/?app=play`, which shows no donation links); it sends
+  `X-Unfret-Donate: off` on every request and has no donate or support link ("Support Unfret" isn't in its APK: a
+  build config field, empty in the Play build). The
   direct download says deep checks are paused until next month and links "Support Unfret" to `unfret.net/donate`,
   and its home screen links "Support Unfret" to `unfret.net/support`.
 

@@ -35,7 +35,9 @@ class StorefrontTest {
         assertTrue(play.donateOff)
         assertEquals("https://unfret.net/donate", direct.donateUrl("https://unfret.net"))
         assertEquals("https://dev.unfret.net/support", direct.supportUrl("https://dev.unfret.net/"))
-        assertEquals("https://unfret.net/", play.homeUrl("https://unfret.net"))
+        assertEquals("https://unfret.net/?app=play", play.homeUrl("https://unfret.net"))
+        assertEquals("Support Unfret", direct.supportLabel)
+        assertEquals("", play.supportLabel)
         assertEquals(donate, direct.deepHint(donate))
         assertEquals(runNow, direct.deepHint(runNow))
         assertTrue(direct.mayOpen("https://unfret.net/donate"))
@@ -70,7 +72,7 @@ class StorefrontTest {
             "https://unfret.net/about?app=play",
             "https://unfret.net/terms?app=play",
             "https://dev.unfret.net/privacy?app=play",
-            "https://unfret.net/",
+            "https://unfret.net/?app=play",
             "https://example.com/some/shop",
         )) {
             assertTrue(url, play.mayOpen(url))
@@ -90,6 +92,7 @@ class StorefrontTest {
             "https://UNFRET.net/money",
             "https://dev.unfret.net/checkout",
             "https://unfret.net",
+            "https://unfret.net/",
             "not a url with spaces",
         )) {
             assertFalse(url, play.mayOpen(url))
@@ -142,9 +145,8 @@ class StorefrontTest {
         assertEquals(emptySet<String>(), main.filter { (_, texts) -> texts.any(Storefront::mentionsBuying) }.keys)
         val playBuild = main + overrides
         assertEquals(emptySet<String>(), playBuild.filter { (_, texts) -> texts.any(Storefront::mentionsBuying) }.keys)
-        // "Support Unfret" stays in the Play build's resources but is never shown there (Storefront.linksDonations).
         val donating = playBuild.filter { (_, texts) -> texts.any(Storefront::mentionsDonating) }.keys
-        assertEquals(setOf("paused_note", "support_unfret"), donating)
+        assertEquals(setOf("paused_note"), donating)
         assertEquals(
             listOf("Free checks run on donations. Quick checks still work; deep checks are back next month. More info at unfret.net"),
             playBuild.getValue("paused_note"),

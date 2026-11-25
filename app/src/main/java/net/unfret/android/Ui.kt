@@ -70,7 +70,7 @@ fun Activity.pauseMessage(base: String, prefix: String? = null): CharSequence {
     text.append(getString(R.string.paused_note))
     if (storefront.linksDonations) {
         text.append(' ')
-        link(text, getString(R.string.support_unfret), storefront.donateUrl(base))
+        link(text, storefront.supportLabel, storefront.donateUrl(base))
     } else {
         val at = text.indexOf(PLAY_LINK_TEXT, start)
         if (at >= 0) text.setSpan(linkSpan(storefront.homeUrl(base)), at, at + PLAY_LINK_TEXT.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
