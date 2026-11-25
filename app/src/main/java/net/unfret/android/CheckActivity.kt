@@ -18,6 +18,10 @@ import android.webkit.WebSettings
 import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.CheckBox
+import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -27,7 +31,9 @@ import androidx.core.net.toUri
 import androidx.core.view.isVisible
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.LinearProgressIndicator
+import com.google.android.material.textfield.TextInputEditText
 import org.json.JSONObject
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -57,6 +63,10 @@ class CheckActivity : AppCompatActivity() {
 
     private lateinit var base: String
     private var bundle: String = ""
+
+    /** The check on screen and the request exactly as sent, for "Wrong result?". */
+    private var shown: AnalysisResult? = null
+    private var shownRequest: JSONObject? = null
 
     /** A check is being read or sent: the button does nothing until it's over. */
     private var busy = false
@@ -124,6 +134,7 @@ class CheckActivity : AppCompatActivity() {
         resultView.onDone = { finish() }
         resultView.base = base
         resultView.loadImage = ::loadThumbnail
+        resultView.onReport = ::askReport
         resultView.onObject = { openInBrowser(Storefront.current.infoPage(base, "/objection")) }
         resultView.onDeepHint = { action ->
             when (action) {
@@ -329,6 +340,7 @@ class CheckActivity : AppCompatActivity() {
         background.execute {
             var progress = Progress()
             var refused: ApiError? = null
+            var request: JSONObject? = null
             val outcome = try {
                 val api = api()
                 val onStep: (Step) -> Unit = { step ->
@@ -345,8 +357,13 @@ class CheckActivity : AppCompatActivity() {
                         }
                     }
                 }
+                val quickCheck = {
+                    val body = AnalyzeRequest.fromExtraction(extraction, quick = true)
+                    request = body
+                    api.analyze(body, onStep)
+                }
                 val result = if (asQuick) {
-                    api.analyze(AnalyzeRequest.fromExtraction(extraction, quick = true), onStep)
+                    quickCheck()
                 } else {
                     try {
                         // The free deep check's proof of work, on this worker thread (ProofOfWork spreads it over the
@@ -359,13 +376,16 @@ class CheckActivity : AppCompatActivity() {
                             },
                             onSolved = { runOnUiThread { if (!isDestroyed) status.setText(R.string.sending) } },
                             onStep = onStep,
-                        ).first
+                        ).let { (answer, sent) ->
+                            request = sent
+                            answer
+                        }
                     } catch (e: ApiError) {
                         // As the extension: a deep check that can't run now becomes a quick one, saying why.
                         if (!QuickCheck.fallsBackToQuick(Problem.of(e))) throw e
                         refused = e
                         progress = Progress() // the quick check's own checks, as its result counts them
-                        api.analyze(AnalyzeRequest.fromExtraction(extraction, quick = true), onStep)
+                        quickCheck()
                     }
                 }
                 Result.success(result)
@@ -377,6 +397,7 @@ class CheckActivity : AppCompatActivity() {
             runOnUiThread {
                 if (isDestroyed) return@runOnUiThread
                 busy = false
+                shownRequest = request
                 quickNote = refused?.let(::fallbackNote)
                 outcome.fold(::showResult, ::showProblem)
             }
@@ -416,6 +437,7 @@ class CheckActivity : AppCompatActivity() {
     }
 
     private fun showResult(result: AnalysisResult) {
+        shown = result
         resultView.show(result, quickNote)
         web.visibility = View.INVISIBLE
         bar.visibility = View.GONE
@@ -432,6 +454,97 @@ class CheckActivity : AppCompatActivity() {
             val bytes = UnfretApi.thumbnail(url, base, HttpUrlTransport())
             val bitmap = bytes?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
             runOnUiThread { if (!isDestroyed) done(bitmap) }
+        }
+    }
+
+    /**
+     * "Wrong result?": the level that's right, the findings shown that are wrong, findings that are missing, and why
+     * (`POST /v1/labels`). The report keeps this page, never who sent it; the contributor key goes along only when the
+     * user turned it on.
+     */
+    private fun askReport() {
+        val result = shown ?: return
+        val token = result.labelToken ?: return
+        val request = shownRequest ?: return
+        val view = layoutInflater.inflate(R.layout.dialog_report, null)
+        val levels = view.findViewById<RadioGroup>(R.id.report_levels)
+        val levelIds = (0..Risk.MAX).associateBy { View.generateViewId() }
+        for ((id, level) in levelIds) {
+            val radio = RadioButton(this)
+            radio.id = id
+            radio.text = getString(R.string.report_level_choice, level, getString(levelWords(level)))
+            if (level == result.risk?.level) radio.append(" " + getString(R.string.report_level_shown))
+            levels.addView(radio)
+        }
+        val shownTypes = result.shownFindings
+        val wrongBoxes = checkboxes(view.findViewById(R.id.report_wrong), shownTypes)
+        if (shownTypes.isEmpty()) view.findViewById<View>(R.id.report_wrong_title).visibility = View.GONE
+        val missingChoices = MISSING_CHOICES.filter { (type, _) -> shownTypes.none { it.first == type } }
+        val missingList = view.findViewById<LinearLayout>(R.id.report_missing)
+        val missingBoxes = checkboxes(missingList, missingChoices)
+        view.findViewById<MaterialButton>(R.id.report_missing_toggle).setOnClickListener { toggle ->
+            missingList.visibility = View.VISIBLE
+            toggle.visibility = View.GONE
+        }
+        val explanation = view.findViewById<TextInputEditText>(R.id.report_explanation)
+        val key = settings.contributorKey
+        view.findViewById<TextView>(R.id.report_note).setText(if (key != null) R.string.report_note_key else R.string.report_note)
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.wrong_result)
+            .setView(view)
+            .setPositiveButton(R.string.report_send, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.setOnShowListener {
+            val send = dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE)
+            fun report() = LabelReport(
+                token = token,
+                request = request,
+                level = levelIds[levels.checkedRadioButtonId],
+                wrong = wrongBoxes.filter { it.second.isChecked }.map { it.first },
+                missing = missingBoxes.filter { it.second.isChecked }.map { it.first },
+                explanation = explanation.text?.toString().orEmpty(),
+                verdict = result.verdictJson,
+                contributorKey = key,
+            )
+            val update = { send.isEnabled = report().complete }
+            update()
+            levels.setOnCheckedChangeListener { _, _ -> update() }
+            (wrongBoxes + missingBoxes).forEach { (_, box) -> box.setOnCheckedChangeListener { _, _ -> update() } }
+            send.setOnClickListener {
+                dialog.dismiss()
+                sendReport(report())
+            }
+        }
+        dialog.show()
+    }
+
+    private fun checkboxes(into: LinearLayout, choices: List<Pair<String, String>>): List<Pair<String, CheckBox>> =
+        choices.map { (type, title) ->
+            val box = CheckBox(this)
+            box.text = title
+            into.addView(box)
+            type to box
+        }
+
+    private fun sendReport(report: LabelReport) {
+        resultView.setReportable(false)
+        Toast.makeText(this, R.string.report_sending, Toast.LENGTH_SHORT).show()
+        background.execute {
+            val message = try {
+                when (api().label(report).status) {
+                    "already_reported" -> R.string.report_already_reported
+                    "already_known" -> R.string.report_already_known
+                    else -> R.string.report_queued
+                }
+            } catch (e: Exception) {
+                labelRefusal(e) ?: R.string.report_failed
+            }
+            runOnUiThread {
+                if (isDestroyed) return@runOnUiThread
+                Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                if (message == R.string.report_failed || message == R.string.report_paused) resultView.setReportable(true)
+            }
         }
     }
 

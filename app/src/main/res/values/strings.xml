@@ -24,6 +24,44 @@
 
 
 
+    <!-- Your reports, and the optional contributor key -->
+    <string name="reports_title">Your reports</string>
+    <string name="reports_body">When Unfret gets a page wrong, tap Wrong result? under the result. A report keeps the page it\'s about, never who sent it.</string>
+    <string name="contributor_switch">Use a contributor key</string>
+    <string name="contributor_about">A random key made on this phone and sent only with your reports, never with a check. Reports with a key count for more, and you can put a name of your choosing on the leaderboard. If you lose the key, you start a new profile.</string>
+    <string name="contributor_loading">Looking up your reports…</string>
+    <!-- "3 reports · 2 agreed · rank 5 as lampfinder" -->
+    <string name="contributor_stats">%1$s · %2$s · %3$s</string>
+    <plurals name="contributor_reports">
+        <item quantity="one">%d report</item>
+        <item quantity="other">%d reports</item>
+    </plurals>
+    <plurals name="contributor_agreed">
+        <item quantity="one">%d agreed</item>
+        <item quantity="other">%d agreed</item>
+    </plurals>
+    <string name="contributor_rank">rank %1$d as %2$s</string>
+    <string name="contributor_hidden">%1$s, not shown on the leaderboard</string>
+    <string name="contributor_no_handle">no leaderboard name</string>
+    <string name="contributor_forget_title">Stop using your contributor key?</string>
+    <string name="contributor_forget_body">Unfret forgets your profile and this phone deletes the key. Your reports stay, without it.</string>
+    <string name="contributor_forget">Stop using it</string>
+    <string name="handle_button">Leaderboard name</string>
+    <string name="handle_title">Your leaderboard name</string>
+    <string name="handle_hint">Name (leave empty to remove it)</string>
+    <string name="handle_helper">3 to 24 letters, digits, - or _. Don\'t use your real name.</string>
+    <string name="handle_public">Show me on the leaderboard</string>
+    <string name="handle_invalid">Use 3 to 24 letters, digits, - or _.</string>
+    <string name="handle_taken">That name is taken. Try another one.</string>
+    <string name="leaderboard">Leaderboard</string>
+    <string name="leaderboard_loading">Loading…</string>
+    <string name="leaderboard_empty">No one is on the leaderboard yet.</string>
+    <!-- "1. lampfinder · 12 agreed" -->
+    <string name="leaderboard_entry">%1$d. %2$s · %3$s</string>
+    <string name="leaderboard_note">Reports that agree with the final answer count. Only people who chose a name are shown.</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+
     <string name="dev_server">Use the dev server (dev.unfret.net, test network)</string>
     <string name="version">Version %1$s</string>
     <string name="beta_note">This is a beta, an early version: things may still change. Tell us what doesn\'t work at hello@unfret.net.</string>
@@ -130,6 +168,26 @@
     <string name="same_product_other_photo">The same photo on %1$s</string>
     <string name="same_product_other_photo_any">The same photo on another shop</string>
     <string name="object_result">Your shop? Object to this result</string>
+    <string name="wrong_result">Wrong result?</string>
+    <string name="report_level_title">What risk level is right for this page?</string>
+    <!-- "2 · May cost more than it's worth" -->
+    <string name="report_level_choice">%1$d · %2$s</string>
+    <string name="report_level_shown">(shown)</string>
+    <string name="report_wrong_title">Which of these are wrong?</string>
+    <string name="report_missing_toggle">Did we miss something?</string>
+    <string name="report_explanation_hint">Anything else? (optional)</string>
+    <string name="report_note">Your report keeps this page, with personal details removed, never who sent it.</string>
+    <string name="report_note_key">Your report keeps this page, with personal details removed, never who sent it. It goes with your contributor key.</string>
+    <string name="report_send">Send report</string>
+    <string name="report_sending">Sending…</string>
+    <string name="report_queued">Thanks! We\'ll review this page.</string>
+    <string name="report_already_reported">Thanks! Someone reported this page too; yours counts as confirmation.</string>
+    <string name="report_already_known">Thanks! We reviewed this page recently.</string>
+    <string name="report_by_you">You\'ve already reported this result.</string>
+    <string name="report_limit">That\'s a lot of reports for one day. Thank you! Try again tomorrow.</string>
+    <string name="report_paused">Reports are paused right now. Please try again later.</string>
+    <string name="report_expired">This result can\'t be reported any more. Check the page again first.</string>
+    <string name="report_failed">The report didn\'t go through. Please try again later.</string>
     <string name="back_to_page">Back to the page</string>
     <string name="done">Done</string>
     <string name="result_notice">Unfret reports risk signals from what the page shows; it never calls a shop a scam. The page may change after this check.</string>

@@ -55,7 +55,8 @@ fun interface Transport {
 
 /**
  * The Unfret API as the app uses it: free checks, quick and deep, with no pass and nothing that names the user or the
- * phone (contract v1, "Free checks for shoppers"). A deep check solves a proof of work first ([deepCheck]).
+ * phone (contract v1, "Free checks for shoppers"). A deep check solves a proof of work first ([deepCheck]). The
+ * optional contributor key goes only with reports and contributor calls ([label], [contributor]), never with a check.
  *
  * [donateOff]: the Google Play build sends `X-Unfret-Donate: off`, so the server's words and links never mention
  * donations ([Storefront]).
@@ -78,6 +79,39 @@ class UnfretApi(private val base: String, private val transport: Transport, priv
             if (response.status !in 200..299) throw errorFrom(response)
             parse(JSONObject(response.reader.readText()))
         }
+
+    private fun <T> post(path: String, body: JSONObject, parse: (JSONObject) -> T): T =
+        transport.send(HttpRequest("POST", "$base$path", headers(true), body.toString())).use { response ->
+            if (response.status !in 200..299) throw errorFrom(response)
+            parse(JSONObject(response.reader.readText().ifBlank { "{}" }))
+        }
+
+    /** `POST /v1/labels`: "Wrong result?" ([LabelReport]). Throws [ApiError] for a refusal ([labelRefusal]). */
+    fun label(report: LabelReport): LabelOutcome = post("/v1/labels", report.body()) {
+        LabelOutcome(it.optString("status", "queued"), it.optBoolean("anonymous", report.contributorKey == null))
+    }
+
+    /** `POST /v1/contributors`: the profile of [key]; [handle] ("" removes it) and [public] change it when given. */
+    fun contributor(key: String, handle: String? = null, public: Boolean? = null): Contributor {
+        val body = JSONObject().put("contributor_key", key)
+        if (handle != null) body.put("handle", handle)
+        if (public != null) body.put("public", public)
+        return post("/v1/contributors", body, Contributor::parse)
+    }
+
+    /** `POST /v1/contributors/forget`: the server forgets [key]'s profile. */
+    fun forgetContributor(key: String): Boolean =
+        post("/v1/contributors/forget", JSONObject().put("contributor_key", key)) { it.optBoolean("deleted", false) }
+
+    /** `GET /v1/contributors/leaderboard`: the public leaderboard, best first. */
+    fun leaderboard(limit: Int = 50): List<LeaderboardEntry> = get("/v1/contributors/leaderboard?limit=$limit") { json ->
+        val entries = json.optJSONArray("entries")
+        (0 until (entries?.length() ?: 0)).mapNotNull { i ->
+            val e = entries!!.optJSONObject(i) ?: return@mapNotNull null
+            val handle = if (e.isNull("handle")) "" else e.optString("handle")
+            if (handle.isEmpty()) null else LeaderboardEntry(e.optInt("rank", i + 1), handle, e.optInt("agreed"), e.optInt("settled"))
+        }
+    }
 
     /** `GET /v1/pricing`'s `free`: whether free deep checks are paused (the month's spend ceiling). */
     fun freeChecks(): FreeChecks = get("/v1/pricing") { FreeChecks.parse(it.optJSONObject("free")) }

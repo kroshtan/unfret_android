@@ -96,9 +96,9 @@ class ResultsTest {
         assertEquals("Level 4 because: Little shop information + Pushy sales talk.", risk.explanation)
         assertEquals(
             listOf(
-                RiskFinding("Little shop information", 4, "No address.", "This page"),
-                RiskFinding("Claims don't match the photos", 3, "", ""),
-                RiskFinding("Pushy sales talk", 1, "A countdown restarts.", "This page"),
+                RiskFinding("missing_trust_info", "Little shop information", 4, "No address.", "This page"),
+                RiskFinding("claims_mismatch", "Claims don't match the photos", 3, "", ""),
+                RiskFinding("pushy_copy", "Pushy sales talk", 1, "A countdown restarts.", "This page"),
             ),
             result.riskFindings,
         )
@@ -144,7 +144,7 @@ class ResultsTest {
     fun `the result card has sources, the same product, the next step and what was checked`() {
         val result = AnalysisResult.parse(
             JSONObject(
-                """{"score": 35, "explanation": "x", "report_token": "rt1", "verdict": {"band": "careful",
+                """{"score": 35, "explanation": "x", "label_token": "lt1", "verdict": {"band": "careful",
                 "label": "Think twice", "headline": "x",
                 "reasons": [{"type": "new_domain", "title": "Brand-new web shop", "detail": "23 days.", "severity": "high",
                   "source": "Domain registry (RDAP)"}],
@@ -171,7 +171,8 @@ class ResultsTest {
         )
         assertEquals(11, verdict.checksRun)
         assertNull(result.cleanChecks) // a warning, not a clean result
-        assertEquals("rt1", result.reportToken)
+        assertEquals("lt1", result.labelToken)
+        assertTrue(result.reportable)
         assertEquals("careful", result.verdictJson!!.optString("band")) // sent back as returned with a report
     }
 
@@ -191,7 +192,8 @@ class ResultsTest {
         assertTrue(older.verdict!!.checklist.isEmpty())
         assertNull(older.verdict!!.nextStep)
         assertNull(older.verdict!!.sameProduct)
-        assertNull(older.reportToken)
+        assertNull(older.labelToken)
+        assertFalse(older.reportable)
     }
 
     @Test
