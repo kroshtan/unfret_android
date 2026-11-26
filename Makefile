@@ -76,7 +76,8 @@ extractor-check: extractor-deps
 extractor-test: extractor-deps
 	$(NODE) npm test
 
-## play-store-images: the Google Play listing's icon, feature graphic and phone screenshots of the play build, on an
+## play-store-images: the Google Play listing's icon, feature graphic and phone screenshots of the play build (and the
+## direct download's pause screenshot, store/direct), on an
 ## emulator (store/play/README.md; needs /dev/kvm, node and Playwright's Chromium on the host)
 play-store-images:
 	store/play/screenshots.sh

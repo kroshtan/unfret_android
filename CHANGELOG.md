@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Store screenshots for free checks** (`make play-store-images`, store/play/README.md): the home screen, a shared
+  page, risk levels 4 (with the findings behind it), 3, 2 and 0, and "Wrong result?"; no pass, packs or balance. The
+  stand-in for unfret.net answers the free-check calls (price list, proof of work, catalogue, results by shop); the
+  results for levels 0, 2 and 3 are made up for `.example` shops. The Play screenshots show nothing about donating:
+  the run fails on such words on screen or on a request without `X-Unfret-Donate: off`. The pause is shot from the
+  direct download's release build only, into `store/direct/screenshots/` (not for Play).
+
 - **Unfret Dev, built on every push to main**: the `dev` build type (`net.unfret.android.dev`, "Unfret Dev", talks to
   dev.unfret.net only), version `<versionName>-dev.<run>`, signed with a separate dev key (`scripts/sign-dev.sh`,
   pinned in `docs/dev-cert.sha256`, never the release key) and published as the forge's rolling pre-release `dev`
