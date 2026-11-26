@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The Google Play listing's images (store/play/README.md): builds the play build, takes the phone screenshots on an
-# emulator (tools/shoot.sh, in the Android SDK container the Makefile pins), then renders the icon, the feature
+# The Google Play listing's images (store/play/README.md): builds the play build (and the direct download's release
+# build, for its pause screenshot), takes the phone screenshots on an emulator (tools/shoot.sh, in the Android SDK container the Makefile pins), then renders the icon, the feature
 # graphic and the final screenshots (graphics.mjs). Run from anywhere: `store/play/screenshots.sh`, or `make
 # play-store-images`.
 #
@@ -14,17 +14,20 @@ kvm_group="$(stat -c %g /dev/kvm)"
 run=(docker run --rm -u "$(id -u):$(id -g)" -e HOME=/work/.home -e GRADLE_USER_HOME=/work/.gradle-home
   -e ANDROID_USER_HOME=/work/.home/.android -v "$root:/work" -w /work)
 
-# The play build, unsigned, as `bundlePlay` builds it for Play, signed with a throwaway key so the emulator installs
-# it (the key is made here, kept in the git-ignored .home, and signs nothing else).
-"${run[@]}" "$image" ./gradlew --console=plain assemblePlay
+# The play build and the direct download's release build, unsigned, as Gradle builds them for Play and for the
+# release, signed with a throwaway key so the emulator installs them (the key is made here, kept in the git-ignored
+# .home, and signs nothing else).
+"${run[@]}" "$image" ./gradlew --console=plain assemblePlay assembleRelease
 "${run[@]}" "$image" bash -c '
   set -euo pipefail
   bt=/opt/android-sdk-linux/build-tools/36.0.0
   ks=.home/play-shots.keystore
   [[ -f $ks ]] || keytool -genkeypair -keystore $ks -storepass screenshots -keypass screenshots -alias shots \
     -keyalg RSA -keysize 2048 -validity 3650 -dname "CN=Unfret store screenshots only" > /dev/null 2>&1
-  $bt/zipalign -f 4 app/build/outputs/apk/play/app-play-unsigned.apk .home/play-aligned.apk
-  $bt/apksigner sign --ks $ks --ks-pass pass:screenshots --out .home/play-shots.apk .home/play-aligned.apk'
+  for build in play:play-shots release:direct-shots; do
+    $bt/zipalign -f 4 "app/build/outputs/apk/${build%%:*}/app-${build%%:*}-unsigned.apk" .home/aligned.apk
+    $bt/apksigner sign --ks $ks --ks-pass pass:screenshots --out ".home/${build#*:}.apk" .home/aligned.apk
+  done'
 
 rm -rf .home/play-raw
 "${run[@]}" --device /dev/kvm --group-add "$kvm_group" --sysctl net.ipv4.ip_unprivileged_port_start=0 \

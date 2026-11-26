@@ -1,10 +1,12 @@
 // The Google Play listing's images (store/play/README.md), rendered in headless Chromium (Playwright):
 //   icon-512.png                 the app icon: the launcher icon's tile and mark, full bleed (Play rounds it)
 //   feature-graphic-1024x500.png the feature graphic, in the house style of the extension's promo tiles
-//   screenshots/N-*.png          the emulator's captures (tools/shoot.sh), as 24-bit PNGs (no alpha, as Play asks)
+//   screenshots/N-*.png          the emulator's captures of the play build (tools/shoot.sh), as 24-bit PNGs (no
+//                                alpha, as Play asks), in the order the listing shows them
+//   ../direct/screenshots/*.png  the direct download's captures (not for Google Play)
 //
 // Usage: node store/play/graphics.mjs [RAW_DIR]   (RAW_DIR: the captures; without it only the icon and the graphic)
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
@@ -27,15 +29,18 @@ const MARK = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rec
 const svgUrl = (svg) => `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'DejaVu Sans', Arial, sans-serif";
 
-// The captures, in the order the listing shows them.
+// The emulator's captures (tools/shoot.sh) → the files. play-*: the play build, for Google Play; direct-*: the direct
+// download's release build (its pause line and "Support Unfret" are about donating: never for Google Play).
 const SCREENSHOTS = [
-  ["home", "1-home.png"],
-  ["shared-page", "2-shared-page.png"],
-  ["quick-result", "3-quick-result.png"],
-  ["check-running", "4-check-running.png"],
-  ["deep-result", "5-deep-result.png"],
-  ["deep-signals", "6-deep-signals.png"],
-  ["deep-checklist", "7-deep-checklist.png"],
+  ["play-home", "screenshots/1-home.png"],
+  ["play-shared-page", "screenshots/2-shared-page.png"],
+  ["play-level-4", "screenshots/3-level-4.png"],
+  ["play-level-4-why", "screenshots/4-level-4-why.png"],
+  ["play-level-3", "screenshots/5-level-3.png"],
+  ["play-wrong-result", "screenshots/6-wrong-result.png"],
+  ["play-level-2", "screenshots/7-level-2.png"],
+  ["play-level-0", "screenshots/8-level-0.png"],
+  ["direct-paused", "../direct/screenshots/1-paused.png"],
 ];
 
 const featureGraphic = `<body style="margin:0;width:1024px;height:500px;display:flex;align-items:center;
@@ -69,9 +74,10 @@ try {
   await feature.close();
 
   if (raw) {
-    const out = join(here, "screenshots");
-    rmSync(out, { recursive: true, force: true });
-    mkdirSync(out, { recursive: true });
+    for (const dir of ["screenshots", "../direct/screenshots"]) {
+      rmSync(join(here, dir), { recursive: true, force: true });
+      mkdirSync(join(here, dir), { recursive: true });
+    }
     const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
     for (const [name, file] of SCREENSHOTS) {
       const source = join(raw, `${name}.png`);
@@ -79,10 +85,10 @@ try {
       const data = `data:image/png;base64,${readFileSync(source).toString("base64")}`;
       await page.setContent(`<body style="margin:0;background:#fff"><img src="${data}" width="1080" height="1920"
         style="display:block"></body>`);
-      await page.screenshot({ path: join(out, file) });
+      await page.screenshot({ path: join(here, file) });
     }
     await page.close();
-    console.log(`screenshots: ${readdirSync(out).join(", ")}`);
+    console.log(`screenshots: ${SCREENSHOTS.map(([, file]) => file).join(", ")}`);
   }
 } finally {
   await browser.close();

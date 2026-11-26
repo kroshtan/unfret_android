@@ -2,8 +2,10 @@
 Drives the emulator's screen through adb for the store screenshots (store/play/README.md).
 
   python3 ui.py tap TEXT [TIMEOUT]    tap the first view whose text or description contains TEXT, scrolling down to it
+                                      ("=TEXT": whose whole text is TEXT)
   python3 ui.py wait TEXT [TIMEOUT]   wait until a view with TEXT is on screen
   python3 ui.py top TEXT [Y]          scroll until the view with TEXT is at about Y px from the top (default 330)
+  python3 ui.py nodonate              fail when any text on screen is about donating (the Play build's screenshots)
 
 Exits non-zero, with the texts that were on screen, when TEXT doesn't turn up.
 """
@@ -36,8 +38,11 @@ def nodes() -> list[tuple[str, tuple[int, int, int, int]]]:
 
 
 def find(text: str) -> tuple[int, int, int, int] | None:
+    # "=TEXT": the whole text, not a part of it (a button, not a sentence that names it).
+    exact = text.startswith("=")
+    want = text[1:].lower() if exact else text.lower()
     for label, bounds in nodes():
-        if text.lower() in label.lower() and bounds[3] > bounds[1]:
+        if (label.strip().lower() == want if exact else want in label.lower()) and bounds[3] > bounds[1]:
             return bounds
     return None
 
@@ -62,8 +67,18 @@ def wait(text: str, timeout: float, scroll: bool) -> tuple[int, int, int, int]:
             time.sleep(0.5)
 
 
+# As Storefront.DONATING in the app: words about donating, which no Play screenshot may show.
+DONATING = re.compile(r"\bdonat|\bsupport unfret\b|/donate|/support\b", re.IGNORECASE)
+
+
 def main() -> None:
-    command, text = sys.argv[1], sys.argv[2]
+    command = sys.argv[1]
+    if command == "nodonate":
+        shown = [label for label, _ in nodes() if DONATING.search(label)]
+        if shown:
+            sys.exit(f"about donating, on a Play screenshot: {shown}")
+        return
+    text = sys.argv[2]
     if command == "tap":
         x1, y1, x2, y2 = wait(text, float(sys.argv[3]) if len(sys.argv) > 3 else 20, scroll=True)
         adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
@@ -73,7 +88,7 @@ def main() -> None:
     elif command == "top":
         target = int(sys.argv[3]) if len(sys.argv) > 3 else 330
         for _ in range(4):
-            y = wait(text, 20, scroll=True)[1]
+            y = wait(text, 40, scroll=True)[1]
             if abs(y - target) < 30:
                 break
             # A slow drag by the difference (slow: no fling), inside the scrolling area (y 300 to 1750).
